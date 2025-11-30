@@ -5,7 +5,7 @@ body {
 
 .menu {
     width: 240px;
-    background-color: #333;
+    background-color: #333; /* cor de fundo escura */
     height: 100vh;
     position: fixed;
 }
