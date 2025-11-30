@@ -1,60 +1,32 @@
 <!DOCTYPE html>
 <html>
-
 <head>
     <meta charset="UTF-8">
     <title>Ricardo Coluce</title>
     <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
 
-    <header>
-        <h1>Ricardo Santos Coluce</h1>
-        <h3>delphi/pascal</h3>
-    </header>
+<div class="menu">
+    <div class="menu-header">
+        <h1>Menu</h1>
+    </div>
+    <div class="menu-body">
+        <a href="#" onclick="carregarPagina('home')">🏠 Início</a>
+        <a href="#" onclick="carregarPagina('objectives')">🎯 Objetivos</a>
+        <a href="#" onclick="carregarPagina('links')">🔗 Links</a>
+        <a href="#" onclick="carregarPagina('about')">ℹ️ Sobre</a>
+    </div>
+    <div class="menu-footer">
+        <h1>Footer</h1>
+    </div>    
+</div>
 
-    <section class="perfil">
-        <img src="img/foto.png" alt="Ricardo trajado com seu uniforme em uma noite normal de trabalho">
-        <p>Olá! Estou aprendendo HTML e CSS e este é o meu primeiro site (🤗 mentira!).</p>
-    </section>
+<div class="conteudo" id="conteudo">
+    <!-- Aqui o JavaScript vai trocar o conteúdo -->
+</div>
 
-    <section>
-        <h2>Meus super poderes</h2>
-        <ul>
-            <li>👨‍💻 Tech-lead</li>            
-            <li>👨‍💻 Desenvolvedor Delphi Senior</li>
-            <li>👨‍🔧 HTML básico</li>
-            <li>👨‍🔧 CSS básico</li>
-            <li>😩 Ataque de espirros</li>
-            <li>🫂 Crise de ansiedade</li>
-        </ul>
-    </section>
-
-    <section>
-        <h2>Objetivos</h2>
-        <ul>
-          <li>🤸 Treinar a construção de paginas web para utilização interna em projetos Delphi 10.x.</li>
-          <li>🖊 Criar o conteudo manualmente, sem usar IA para preencher o código automaticamente, e sim como um professor.</li>
-          <li>📚 Aprender mais sobre HTML e CSS.</li>
-          <li>🧭 Criar uma estrutura de menu lateral e navegação entre paginas</li>
-        </ul>
-    </section>
-
-    <section>
-        <h2>Links</h2>
-        <ul>
-            <li><a href="https://coluce.wordpress.com/">🗞 Blog</a></li>
-            <li><a href="https://www.scosoftware.dev/">👨‍💻 Sco Software</a></li>            
-            <li><a href="https://br.linkedin.com/in/ricardocoluce">👔 Linkedin</a></li>
-            <li><a href="https://www.instagram.com/ricardocoluce/">📸 Instagram</li>
-        </ul>
-    </section>
-
-    <footer>
-        <p>Desenvolvido (talvez essa palavra seja muito forte) por Ricardo © 2025</p>
-    </footer>
+<script src="script.js"></script>
 
 </body>
-
 </html>
