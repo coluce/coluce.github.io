@@ -11,6 +11,17 @@ async function carregarPagina(pagina) {
 
         const html = await resposta.text();
         conteudo.innerHTML = html;
+        
+        // Remove classe 'active' de todos os menu items
+        document.querySelectorAll('.menu-item').forEach(item => {
+            item.classList.remove('active');
+        });
+        
+        // Adiciona classe 'active' ao menu item clicado
+        const menuItemAtivo = document.querySelector(`[data-pagina="${pagina}"]`);
+        if (menuItemAtivo) {
+            menuItemAtivo.classList.add('active');
+        }
 
     } catch (erro) {
         conteudo.innerHTML = "<h1>Erro</h1><p>Deu zica lendo o trêm.</p>";

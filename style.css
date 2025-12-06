@@ -27,12 +27,26 @@ body {
     background-color: #444;
 }
 
+.menu-item.active {
+    background-color: #686868;
+    color: #333;
+}
+
+.menu-item.active svg {
+    color: #333;
+}
+
 .menu-header {
   color: white;
   background-color: #444;
-  padding: 20px;
+  padding: 0px;
   text-align: center;
   border-bottom: 1px solid #555;
+  height: 60px;
+}
+
+.menu-header .icon {
+  align: 5px 0px 0px 0px;
 }
 
 .menu-body {
@@ -87,7 +101,7 @@ body {
 
 .conteudo {
     margin-left: 240px;
-    padding: 20px;
+    padding: 0px;
 }
 
 .perfil {
