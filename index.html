@@ -1,383 +1,153 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Sentinela — Tower Defense</title>
-  <style>
-    :root { --bg:#07111d; --panel:rgba(8,20,34,.9); --line:rgba(116,191,218,.22); --cyan:#52ddff; --amber:#ffb84d; --red:#ff5c68; --muted:#8ba5b7; }
-    * { box-sizing:border-box; }
-    html,body { margin:0; min-height:100%; background:#050c15; color:#e7f4fa; font-family: ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif; }
-    body { display:grid; place-items:center; padding:20px; }
-    .shell { display:none; width:min(1180px,100%); border:1px solid var(--line); border-radius:22px; overflow:hidden; background:linear-gradient(145deg,#0b1d2d,#07111d 58%); box-shadow:0 26px 90px #0009, inset 0 1px #ffffff0c; }
-    .shell.ready { display:block; }
-    .screen { position:fixed; inset:0; display:none; place-items:center; padding:24px; background:radial-gradient(circle at 50% 20%,#123450 0,#071522 45%,#030810 100%); }
-    .screen.active { display:grid; }
-    .screen-card { width:min(920px,100%); padding:34px; border:1px solid #52ddff40; border-radius:24px; background:#081827e8; box-shadow:0 28px 90px #000b, inset 0 1px #ffffff0b; }
-    .screen-card.narrow { width:min(760px,100%); }
-    .hero-kicker { color:var(--cyan); font-size:12px; letter-spacing:.22em; text-transform:uppercase; }
-    .hero-title { margin:8px 0 8px; font-size:clamp(38px,8vw,82px); line-height:.95; letter-spacing:.08em; text-transform:uppercase; }
-    .hero-copy { max-width:570px; color:var(--muted); line-height:1.6; }
-    .menu-actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:25px; }
-    .menu-actions button { min-width:145px; }
-    .menu-card { width:min(1040px,100%); padding:26px; border:1px solid #52ddff40; border-radius:24px; background:linear-gradient(145deg,#0a1d2de8,#07121fee); box-shadow:0 30px 100px #000b,inset 0 1px #ffffff0b; }
-    .menu-topline { display:flex; justify-content:space-between; align-items:center; gap:12px; padding-bottom:18px; border-bottom:1px solid var(--line); color:var(--muted); font:10px ui-monospace,monospace; letter-spacing:.14em; text-transform:uppercase; }
-    .online { display:flex; align-items:center; gap:7px; color:#8df5bd; }
-    .online i { width:7px; height:7px; border-radius:50%; background:#8df5bd; box-shadow:0 0 12px #8df5bd; }
-    .menu-layout { display:grid; grid-template-columns:1.15fr .85fr; gap:26px; padding:28px 0 22px; }
-    .menu-hero { padding:12px 0 0 8px; }
-    .menu-hero .hero-title { font-size:clamp(48px,8vw,88px); text-shadow:0 0 35px #52ddff22; }
-    .menu-subtitle { color:#ffcf6e; font:700 11px ui-monospace,monospace; letter-spacing:.22em; text-transform:uppercase; }
-    .menu-copy { max-width:560px; margin-top:18px; color:var(--muted); line-height:1.65; }
-    .menu-divider { width:110px; height:2px; margin:20px 0; background:linear-gradient(90deg,var(--cyan),transparent); }
-    .mission-panel { align-self:center; padding:18px; border:1px solid #ffcf6e44; border-radius:16px; background:linear-gradient(160deg,#182d3b,#0a1725); box-shadow:0 12px 35px #0005; }
-    .mission-label { color:var(--muted); font:10px ui-monospace,monospace; letter-spacing:.15em; text-transform:uppercase; }
-    .mission-panel h2 { margin:8px 0 5px; color:#ffcf6e; font-size:18px; letter-spacing:.08em; }
-    .mission-panel p { margin:0; color:var(--muted); font-size:12px; line-height:1.5; }
-    .core-orbit { position:relative; display:grid; place-items:center; height:115px; margin:16px 0; overflow:hidden; border:1px solid #52ddff28; border-radius:12px; background:radial-gradient(circle,#15598744 0,#071522 62%); }
-    .core-orbit::before,.core-orbit::after { content:""; position:absolute; width:72px; height:72px; border:1px solid #52ddff77; border-radius:50%; transform:rotate(25deg) skewX(-18deg); }
-    .core-orbit::after { width:105px; height:42px; border-color:#ffcf6e55; transform:rotate(-25deg) skewX(-20deg); }
-    .core-symbol { position:relative; z-index:1; color:var(--cyan); font-size:33px; text-shadow:0 0 24px var(--cyan); }
-    .menu-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:17px; }
-    .menu-stat { padding:10px; border:1px solid #6bb6cb2e; border-radius:10px; background:#081827; }
-    .menu-stat small { display:block; color:var(--muted); font-size:9px; letter-spacing:.1em; text-transform:uppercase; }
-    .menu-stat b { display:block; margin-top:4px; color:#dff8ff; font-size:16px; }
-    .menu-actions { margin-top:4px; }
-    .menu-actions button { min-width:140px; }
-    .menu-action-icon { width:18px; height:18px; margin-right:7px; vertical-align:-4px; fill:currentColor; }
-    .screen-heading-icon { width:28px; height:28px; margin-right:9px; vertical-align:-7px; fill:currentColor; }
-    .menu-footer { display:flex; justify-content:space-between; gap:12px; padding-top:16px; border-top:1px solid var(--line); color:#557286; font:10px ui-monospace,monospace; letter-spacing:.1em; text-transform:uppercase; }
-    .catalog-head { display:flex; justify-content:space-between; align-items:start; gap:16px; margin-bottom:18px; }
-    .catalog-head h2 { margin:0; font-size:24px; letter-spacing:.08em; text-transform:uppercase; }
-    .catalog-head p { margin:6px 0 0; color:var(--muted); }
-    .catalog-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:11px; }
-    .catalog-item { padding:14px; border:1px solid #6bb6cb33; border-radius:14px; background:#0b2334; }
-    .catalog-icon { width:46px; height:46px; display:grid; place-items:center; margin-bottom:11px; border-radius:14px; color:var(--accent); border:1px solid color-mix(in srgb,var(--accent),transparent 45%); background:color-mix(in srgb,var(--accent),transparent 85%); font-size:20px; }
-    .catalog-item strong { color:var(--accent); letter-spacing:.1em; }
-    .catalog-item small { display:block; min-height:34px; margin-top:7px; color:var(--muted); line-height:1.35; }
-    .catalog-item.tower-locked { opacity:.5; filter:saturate(.25); }
-    .catalog-item.tower-locked strong::after { content:' · BLOQUEADA'; color:var(--muted); font-size:9px; }
-    .tower-gallery { display:grid; grid-template-columns:1.05fr .95fr; gap:16px; }
-    .tower-gallery-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; align-content:start; }
-    .tower-gallery-card { position:relative; min-height:132px; padding:14px; text-align:left; border:1px solid #6bb6cb33; border-radius:14px; background:#0b2334; color:#e7f4fa; cursor:pointer; }
-    .tower-gallery-card:hover { border-color:var(--tower-color); box-shadow:0 0 24px color-mix(in srgb,var(--tower-color),transparent 78%); }
-    .tower-gallery-card.selected { border-color:var(--tower-color); background:linear-gradient(145deg,#14374d,#0b2334); box-shadow:inset 3px 0 var(--tower-color),0 0 20px color-mix(in srgb,var(--tower-color),transparent 85%); }
-    .tower-gallery-card.locked { opacity:.48; filter:saturate(.25); }
-    .tower-gallery-card .catalog-icon { margin-bottom:9px; }
-    .tower-gallery-card strong { display:block; color:var(--tower-color); letter-spacing:.1em; }
-    .tower-gallery-card small { display:block; margin-top:6px; min-height:31px; color:var(--muted); line-height:1.35; }
-    .tower-badge { position:absolute; top:12px; right:11px; color:var(--muted); font:9px ui-monospace,monospace; letter-spacing:.08em; text-transform:uppercase; }
-    .tower-detail { min-height:300px; padding:18px; border:1px solid #52ddff33; border-radius:16px; background:linear-gradient(155deg,#102b3d,#081827); }
-    .tower-detail-head { display:flex; align-items:center; gap:12px; padding-bottom:14px; border-bottom:1px solid var(--line); }
-    .tower-detail-head .catalog-icon { margin:0; flex:none; }
-    .tower-detail h3 { margin:0; color:var(--tower-color); font-size:22px; letter-spacing:.12em; }
-    .tower-detail .role { margin-top:4px; color:var(--muted); font-size:11px; }
-    .tower-detail p { color:#b8cfda; line-height:1.5; font-size:12px; }
-    .tower-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:7px; margin:15px 0; }
-    .tower-stat { padding:9px; border:1px solid #6bb6cb2e; border-radius:9px; background:#071522; }
-    .tower-stat small { display:block; color:var(--muted); font-size:9px; letter-spacing:.08em; text-transform:uppercase; }
-    .tower-stat b { display:block; margin-top:4px; color:#e7f4fa; font-size:16px; }
-    .tower-unlock { margin-top:14px; padding:10px; border-radius:9px; background:#ffcf6e12; color:#ffcf6e; font-size:11px; }
-    .settings-panel { display:grid; gap:18px; padding:20px; }
-    .settings-row { padding:16px; border:1px solid #6bb6cb33; border-radius:13px; background:#0b2334; }
-    .settings-row-head { display:flex; justify-content:space-between; gap:12px; align-items:center; margin-bottom:12px; }
-    .settings-row strong { color:#dff8ff; letter-spacing:.08em; text-transform:uppercase; font-size:12px; }
-    .settings-row small { color:var(--muted); line-height:1.4; }
-    .settings-value { color:var(--cyan); font:700 12px ui-monospace,monospace; }
-    #volumeRange { width:100%; accent-color:var(--cyan); }
-    .quality-options { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:12px; }
-    .quality-option { text-align:left; }
-    .quality-option.selected { border-color:#ffcf6e; background:#3c2c1b; }
-    .quality-option b,.quality-option small { display:block; }
-    .quality-option b { color:#ffcf6e; font-size:11px; }
-    .quality-option small { margin-top:4px; }
-    .settings-preview { display:grid; grid-template-columns:1.15fr .85fr; gap:12px; align-items:stretch; }
-    .preview-card { padding:13px; border:1px solid #6bb6cb33; border-radius:13px; background:#071522; }
-    .preview-card h3 { margin:0 0 5px; color:#dff8ff; font-size:11px; letter-spacing:.1em; text-transform:uppercase; }
-    .preview-card p { margin:0 0 10px; color:var(--muted); font-size:10px; line-height:1.4; }
-    #settingsPreviewCanvas { width:100%; height:125px; border:1px solid #6bb6cb33; border-radius:9px; background:#081827; cursor:default; }
-    .audio-test { width:100%; min-height:125px; display:grid; place-items:center; text-align:center; border-color:#52ddff55; background:radial-gradient(circle at 50% 40%,#1b607d,#0b2334 60%); }
-    .audio-test .sound-icon { display:block; color:var(--cyan); font-size:28px; margin-bottom:7px; text-shadow:0 0 18px #52ddff99; }
-    .audio-test.testing { border-color:#8df5bd; box-shadow:0 0 25px #52ddff66; transform:scale(.98); }
-    .audio-test.testing .sound-icon { color:#8df5bd; animation:audioPulse .26s ease-out; }
-    @keyframes audioPulse { 50% { transform:scale(1.25); text-shadow:0 0 30px #8df5bd; } }
-    .game-control { min-width:44px; min-height:38px; padding:8px 12px; display:inline-grid; place-items:center; font-size:22px; line-height:1; }
-    .game-control.icon-control { width:48px; height:40px; padding:0; font-size:22px; line-height:1; }
-    .control-icon { width:22px; height:22px; display:block; fill:currentColor; }
-    .phase-stats { width:min(430px,calc(100% - 28px)); padding:20px; border:1px solid #52ddff66; border-radius:16px; background:linear-gradient(145deg,#102d40,#071522); color:#e7f4fa; box-shadow:0 20px 60px #000b; }
-    .phase-stats h2 { margin:0; color:#ffcf6e; font-size:18px; letter-spacing:.12em; text-transform:uppercase; }
-    .phase-stats p { margin:6px 0 17px; color:var(--muted); font-size:11px; }
-    .phase-stat-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
-    .phase-stat { padding:13px 8px; border:1px solid #6bb6cb33; border-radius:10px; background:#081827; text-align:center; }
-    .phase-stat b { display:block; color:var(--cyan); font-size:22px; }
-    .phase-stat small { display:block; margin-top:5px; color:var(--muted); font-size:9px; line-height:1.2; text-transform:uppercase; }
-    .phase-stats .install-foot { justify-content:space-between; gap:8px; padding-top:17px; }
-    .phase-stats .phase-nav { display:flex; gap:8px; }
-    .phase-stats .phase-nav button { width:44px; height:40px; padding:0; display:grid; place-items:center; }
-    .game-control.pause-control { min-width:78px; font-size:12px; }
-    .game-control:disabled { opacity:.48; cursor:not-allowed; transform:none; }
-    .audio-test small { display:block; margin-top:6px; color:var(--muted); font-size:10px; font-weight:400; }
-    @media (max-width:700px) { .settings-preview{grid-template-columns:1fr} }
-    header { display:flex; align-items:center; justify-content:space-between; gap:18px; padding:18px 22px; border-bottom:1px solid var(--line); background:#081827cc; backdrop-filter:blur(14px); }
-    .brand { display:flex; align-items:center; gap:12px; }
-    .mark { width:38px;height:38px;border-radius:12px;display:grid;place-items:center;border:1px solid #52ddff66;color:var(--cyan);background:#52ddff12;font-size:20px;box-shadow:0 0 25px #52ddff18; }
-    h1 { margin:0; font-size:17px; letter-spacing:.12em; text-transform:uppercase; }
-    .sub { margin-top:3px; color:var(--muted); font-size:12px; letter-spacing:.08em; text-transform:uppercase; }
-    .stats { display:flex; gap:9px; flex-wrap:wrap; justify-content:flex-end; }
-    .stat { min-width:88px; padding:7px 11px; border:1px solid var(--line); border-radius:10px; background:#0b2032; }
-    .stat small { display:block;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.1em; }
-    .stat-icon { width:14px; height:14px; margin-right:5px; vertical-align:-3px; fill:currentColor; }
-    .stat b { display:block;margin-top:2px;font-size:17px; }
-    main { position:relative; padding:16px; }
-    canvas { display:block;width:100%;aspect-ratio:16/9;border:1px solid #6bb6cb2b;border-radius:16px;background:#081522;cursor:crosshair;box-shadow:0 10px 35px #0005; }
-    .toolbar { display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;flex-wrap:wrap; }
-    .hint { color:var(--muted);font-size:12px; }
-    .actions { display:flex;gap:8px; }
-    button { border:1px solid var(--line); border-radius:10px; color:#e7f4fa; background:#102b3d; padding:9px 13px; font-weight:700; cursor:pointer; transition:.16s ease; }
-    button:hover { transform:translateY(-1px); border-color:#52ddff88; background:#14374d; }
-    button:active { transform:scale(.97); }
-    button.primary { background:linear-gradient(135deg,#1685a7,#12617d);border-color:#63e2ff88; }
-    button.danger { background:#3b1824;border-color:#ff5c6860; }
-    .toast { position:absolute; left:50%; top:27px; transform:translateX(-50%) translateY(-8px); opacity:0; pointer-events:none; padding:9px 14px; border-radius:999px; border:1px solid #52ddff60; background:#081b2de8; color:#dff8ff; font-size:12px; transition:.22s ease; }
-    .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
-    .achievement-toast { position:fixed; z-index:50; top:22px; left:50%; display:flex; align-items:center; gap:11px; width:min(360px,calc(100% - 28px)); padding:12px 15px; border:1px solid #ffcf6e99; border-radius:14px; background:linear-gradient(135deg,#142b3bfa,#0a1827f7); box-shadow:0 14px 38px #000b,0 0 28px #ffcf6e22; opacity:0; pointer-events:none; transform:translate(-50%,-16px) scale(.96); transition:.24s cubic-bezier(.23,1,.32,1); }
-    .achievement-toast.show { opacity:1; transform:translate(-50%,0) scale(1); }
-    .achievement-toast .trophy { width:34px; height:34px; display:grid; place-items:center; flex:none; border:1px solid #ffcf6e99; border-radius:10px; color:#ffcf6e; background:#ffcf6e18; font-size:19px; }
-    .achievement-toast strong { display:block; color:#ffcf6e; font-size:10px; letter-spacing:.16em; text-transform:uppercase; }
-    .achievement-toast b { display:block; margin-top:3px; font-size:13px; }
-    .achievement-toast small { display:block; margin-top:2px; color:var(--muted); font-size:11px; }
-    .legend { display:flex; gap:16px; align-items:center; color:var(--muted); font-size:11px; }
-    .dot { display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px; }
-    .upgrade { position:absolute; right:28px; bottom:72px; width:230px; padding:14px; border:1px solid #52ddff55; border-radius:14px; background:#071827ed; box-shadow:0 14px 36px #0008; backdrop-filter:blur(12px); opacity:0; pointer-events:none; transform:translateY(8px); transition:.18s ease; }
-    .upgrade.show { opacity:1; pointer-events:auto; transform:translateY(0); }
-    .upgrade h2 { margin:0 0 3px; font-size:13px; letter-spacing:.1em; text-transform:uppercase; }
-    .upgrade p { margin:0 0 10px; color:var(--muted); font-size:11px; }
-    .upgrade .level { color:var(--cyan); font-weight:800; }
-    .upgrade button { width:100%; margin-top:7px; display:flex; justify-content:space-between; align-items:center; }
-    .upgrade button:disabled { opacity:.4; cursor:not-allowed; transform:none; }
-    .ability-control { min-width:42px; color:#ffcf6e; border-color:#ffcf6e66; } .ability-control:disabled { opacity:.38; cursor:not-allowed; }
-    .talent-dialog { width:min(680px,calc(100% - 28px)); }
-    .talent-status { display:flex; justify-content:space-between; align-items:center; margin:14px 20px 0; padding:10px 12px; border:1px solid #ffcf6e55; border-radius:10px; background:#3a2a151f; color:var(--muted); font-size:10px; letter-spacing:.1em; }
-    .talent-status b { color:#ffcf6e; font-size:15px; letter-spacing:0; }
-    .talent-tree { position:relative; display:grid; grid-template-columns:repeat(2,1fr); gap:12px; padding:16px 20px 18px; }
-    .talent-tree::before { content:''; position:absolute; left:25%; right:25%; top:50%; border-top:1px solid #ffcf6e44; }
-    .talent-node { position:relative; z-index:1; min-height:142px; padding:13px; border:1px solid #6bb6cb44; border-radius:13px; background:#0b2334; }
-    .talent-node.maxed { border-color:#8df5bd; box-shadow:0 0 18px #8df5bd18; }
-    .talent-node-icon { width:30px; height:30px; display:grid; place-items:center; border:1px solid #ffcf6e77; border-radius:9px; color:#ffcf6e; font-size:18px; }
-    .talent-node strong { display:block; margin-top:9px; color:#e7f8ff; font-size:12px; letter-spacing:.08em; text-transform:uppercase; }
-    .talent-node small { display:block; min-height:30px; margin-top:5px; color:var(--muted); line-height:1.35; }
-    .talent-buy { width:100%; margin-top:9px; justify-content:center !important; color:#ffcf6e; }
-    .talent-buy .talent-cost { font-size:11px; }
-    .talent-buy:disabled { opacity:.42; }
-    .targeting { margin-top:12px; padding-top:10px; border-top:1px solid var(--line); }
-    .targeting-head { display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
-    .targeting-head strong { color:#dff8ff; font-size:10px; letter-spacing:.12em; }
-    .targeting-head span { color:var(--cyan); font-size:9px; text-align:right; }
-    .targeting-options { display:grid; grid-template-columns:repeat(2,1fr); gap:6px; margin-top:8px; }
-    .targeting-options button { min-height:43px; margin-top:0; padding:6px 7px; display:block; text-align:left; border-color:#6bb6cb44; background:#0b2334; }
-    .targeting-options button b { display:block; color:#dff8ff; font-size:10px; line-height:1.1; }
-    .targeting-options button small { display:block; margin-top:4px; color:var(--muted); font-size:9px; line-height:1; }
-    .targeting-options button.selected { border-color:#52ddff; background:linear-gradient(135deg,#16445a,#102b40); box-shadow:inset 3px 0 #52ddff,0 0 14px #52ddff18; }
-    .targeting-options button.selected b { color:#fff; }
-    .targeting-options button.selected small { color:#9beeff; }
-    .targeting-options button:focus-visible { outline:2px solid #ffcf6e; outline-offset:1px; }
-    .targeting-options button:last-child { grid-column:span 2; }
-    .upgrade button.sell { margin-top:12px; background:#3b1824; border-color:#ff5c6860; color:#ffabb2; }
-    .upgrade .close { position:absolute !important; top:6px !important; right:7px !important; left:auto !important; display:flex !important; align-items:center; justify-content:center; width:24px !important; height:24px !important; margin:0 !important; padding:0 0 2px !important; border:0 !important; border-radius:7px; background:#17354a !important; color:#e7f4fa !important; font-family:Arial,sans-serif; font-size:19px; line-height:24px; font-weight:700; text-align:center; z-index:20; }
-    .upgrade .close:hover { background:#24516a !important; color:#fff !important; }
-    dialog { width:min(520px,calc(100% - 28px)); padding:0; border:1px solid #52ddff66; border-radius:18px; color:#e7f4fa; background:#081827f5; box-shadow:0 24px 90px #000b; }
-    dialog::backdrop { background:#020812aa; backdrop-filter:blur(5px); }
-    .install-head { padding:18px 20px 12px; border-bottom:1px solid var(--line); }
-    .install-head h2 { margin:0; font-size:16px; letter-spacing:.08em; text-transform:uppercase; }
-    .install-head p { margin:5px 0 0; color:var(--muted); font-size:12px; }
-    .tower-options { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; padding:16px 20px 12px; }
-    .tower-option { text-align:left; min-height:130px; padding:13px; border-color:#6bb6cb44; background:#0b2334; }
-    .tower-option:hover { border-color:var(--option-color); box-shadow:0 0 24px color-mix(in srgb,var(--option-color),transparent 70%); }
-    .tower-option b { display:block; color:var(--option-color); letter-spacing:.1em; font-size:13px; }
-    .tower-option small { display:block; color:#dff8ff; margin-top:10px; line-height:1.35; font-weight:600; }
-    .tower-option span { display:block; margin-top:8px; color:var(--amber); font-size:12px; }
-    .tower-option.locked { opacity:.48; filter:saturate(.25); cursor:not-allowed; }
-    .install-foot { display:flex; justify-content:flex-end; padding:0 20px 16px; }
-    .install-foot button { background:transparent; color:var(--muted); }
-    .achievements { width:min(560px,calc(100% - 28px)); padding:0; border:1px solid #ffb84d66; border-radius:18px; color:#e7f4fa; background:#081827f7; box-shadow:0 24px 90px #000b; }
-    .achievement-list { display:grid; grid-template-columns:repeat(2,1fr); gap:9px; padding:16px 20px; }
-    .achievement { padding:11px; border:1px solid #6bb6cb33; border-radius:11px; background:#0b2334; }
-    .achievement.locked { opacity:.48; filter:saturate(.3); }
-    .achievement strong { display:block; color:#ffcf6e; font-size:12px; letter-spacing:.06em; }
-    .achievement small { display:block; margin-top:5px; color:var(--muted); line-height:1.35; }
-    .leaderboard-list { padding:15px 20px 18px; display:grid; gap:7px; }
-    .score-row { display:grid; grid-template-columns:30px 1fr auto; gap:10px; align-items:center; padding:9px 10px; border:1px solid #6bb6cb33; border-radius:9px; background:#0b2334; font-size:12px; }
-    .score-row strong { color:#ffcf6e; }
-    .score-row small { color:var(--muted); }
-    .map-options { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; padding:16px 20px 12px; }
-    .map-option { min-height:120px; text-align:left; background:#0b2334; }
-    .map-option b { display:block; color:var(--map-color); letter-spacing:.08em; }
-    .map-option small { display:block; margin-top:9px; color:var(--muted); line-height:1.35; }
-    #mapDialog { width:min(900px,calc(100% - 28px)); }
-    .map-picker { display:grid; grid-template-columns:220px 1fr; min-height:390px; }
-    .map-list { padding:16px; border-right:1px solid var(--line); background:#071522; }
-    .map-list h3,.difficulty h3 { margin:0 0 10px; color:var(--muted); font-size:10px; letter-spacing:.15em; text-transform:uppercase; }
-    .map-list button { display:block; width:100%; margin-bottom:8px; text-align:left; }
-    .map-list button.selected { border-color:var(--map-color); background:#14374d; box-shadow:inset 3px 0 var(--map-color); }
-    .map-list button b { display:block; color:var(--map-color); }
-    .map-list button small { display:block; margin-top:4px; color:var(--muted); }
-    .map-detail { padding:18px 20px; }
-    .map-detail h3 { margin:0; color:var(--map-color); font-size:22px; letter-spacing:.1em; }
-    .map-detail p { margin:7px 0 14px; color:var(--muted); line-height:1.45; }
-    #mapPreviewCanvas { display:block; width:100%; height:200px; border:1px solid #6bb6cb33; border-radius:13px; background:#071522; }
-    .difficulty { margin-top:15px; }
-    .difficulty-options { display:flex; gap:8px; flex-wrap:wrap; }
-    .difficulty-options button { flex:1; min-width:120px; text-align:left; }
-    .difficulty-options button.selected { border-color:#ffcf6e; background:#3c2c1b; }
-    .difficulty-options b { display:block; color:#ffcf6e; }
-    .difficulty-options small { display:block; margin-top:4px; color:var(--muted); }
-    .map-select.locked { opacity:.42; filter:saturate(.2); cursor:not-allowed; }
-    .map-select.locked b::before { content:'🔒 '; font-size:10px; }
-    .map-detail .install-foot { padding:18px 0 0; }
-    #startSelectedMap { min-width:46px; min-height:38px; padding:7px 14px; font-size:19px; line-height:1; }
-    @media (max-width:700px) { .map-picker{grid-template-columns:1fr}.map-list{border-right:0;border-bottom:1px solid var(--line)}.map-list button{display:inline-block;width:auto;margin-right:5px}.map-list button small{display:none} }
-    @media (max-width:700px) { body{padding:8px}.shell{border-radius:16px}header{align-items:flex-start;flex-direction:column}.stats{justify-content:flex-start}.stat{min-width:78px}main{padding:9px}.toolbar{align-items:flex-start;flex-direction:column}.actions{width:100%}.actions button{flex:1}.menu-card{padding:18px}.menu-layout{grid-template-columns:1fr;gap:12px;padding:20px 0}.menu-hero{padding-left:2px}.menu-topline,.menu-footer{font-size:9px}.menu-actions button{flex:1;min-width:110px}.tower-gallery{grid-template-columns:1fr}.tower-gallery-grid{grid-template-columns:repeat(2,1fr)}.quality-options{grid-template-columns:1fr} }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Meus Jogos</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    min-height: 100vh;
+    background: linear-gradient(135deg, #1e1e2e 0%, #2d2d44 50%, #1a1a2e 100%);
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 20px;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 50px;
+  }
+
+  h1 {
+    font-size: clamp(2rem, 5vw, 3rem);
+    background: linear-gradient(90deg, #ff6b9d, #c084fc, #60a5fa);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    margin-bottom: 10px;
+  }
+
+  header p {
+    color: #a0a0b8;
+    font-size: 1.1rem;
+  }
+
+  .jogos {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 25px;
+    width: 100%;
+    max-width: 900px;
+  }
+
+  .card {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    padding: 30px;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: var(--gradient);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: 0;
+  }
+
+  .card:hover {
+    transform: translateY(-8px);
+    border-color: rgba(255, 255, 255, 0.3);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+  }
+
+  .card:hover::before { opacity: 0.15; }
+
+  .card > * { position: relative; z-index: 1; }
+
+  .icone {
+    font-size: 3.5rem;
+    margin-bottom: 15px;
+    display: block;
+  }
+
+  .card h2 {
+    font-size: 1.5rem;
+    margin-bottom: 10px;
+  }
+
+  .card p {
+    color: #b8b8d0;
+    line-height: 1.5;
+    font-size: 0.95rem;
+  }
+
+  .card-td     { --gradient: linear-gradient(135deg, #ef4444, #f59e0b); }
+  .card-colorir{ --gradient: linear-gradient(135deg, #ec4899, #8b5cf6, #06b6d4); }
+
+  .btn-jogar {
+    display: inline-block;
+    margin-top: 18px;
+    padding: 10px 22px;
+    border-radius: 50px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transition: background 0.3s;
+  }
+
+  .card:hover .btn-jogar {
+    background: rgba(255, 255, 255, 0.25);
+  }
+
+  footer {
+    margin-top: auto;
+    padding-top: 50px;
+    color: #666;
+    font-size: 0.85rem;
+  }
+</style>
 </head>
 <body>
-  <div id="achievementToast" class="achievement-toast" role="status" aria-live="polite"><div class="trophy">★</div><div><strong>Conquista desbloqueada</strong><b id="achievementToastTitle"></b><small id="achievementToastDesc"></small></div></div>
-  <section id="menuScreen" class="screen active"><div class="menu-card"><div class="menu-topline"><span>SENTINELA // COMMAND TERMINAL</span><span class="online"><i></i>SISTEMA ONLINE</span></div><div class="menu-layout"><div class="menu-hero"><div class="menu-subtitle">Protocolo de defesa // setor 07</div><h1 class="hero-title">Sentinela</h1><div class="menu-divider"></div><p class="menu-copy">A última linha de defesa está ativa. Planeje sua composição, escolha uma rota e mantenha o núcleo vivo contra ondas infinitas.</p><div class="menu-actions"><button id="mapBtn" class="primary"><svg class="menu-action-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true"><title>Selecionar novo mapa</title><path d="M9,3L3.36,4.9C3.15,4.97 3,5.15 3,5.38V20.5A0.5,0.5 0 0 0 3.5,21L3.66,20.97L9,18.9L15,21L20.64,19.1C20.85,19.03 21,18.85 21,18.62V3.5A0.5,0.5 0 0 0 20.5,3L20.34,3.03L15,5.1L9,3M8,5.45V17.15L5,18.31V6.46L8,5.45M10,5.47L14,6.87V18.53L10,17.13V5.47M19,5.7V17.54L16,18.55V6.86L19,5.7M7.46,6.3L5.57,6.97V9.12L7.46,8.45V6.3M7.46,9.05L5.57,9.72V11.87L7.46,11.2V9.05M7.46,11.8L5.57,12.47V14.62L7.46,13.95V11.8M7.46,14.55L5.57,15.22V17.37L7.46,16.7V14.55Z" /></svg>Jogar</button><button data-screen="enemies"><svg class="menu-action-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true"><title>ghost</title><path d="M12,2A9,9 0 0,0 3,11V22L6,19L9,22L12,19L15,22L18,19L21,22V11A9,9 0 0,0 12,2M9,8A2,2 0 0,1 11,10A2,2 0 0,1 9,12A2,2 0 0,1 7,10A2,2 0 0,1 9,8M15,8A2,2 0 0,1 17,10A2,2 0 0,1 15,12A2,2 0 0,1 13,10A2,2 0 0,1 15,8Z" /></svg>Inimigos</button><button data-screen="towers"><svg class="menu-action-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true"><title>chess-rook</title><path d="M5,20H19V22H5V20M17,2V5H15V2H13V5H11V2H9V5H7V2H5V8H7V18H17V8H19V2H17Z" /></svg>Torres</button><button id="achievementsBtn"><svg class="menu-action-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true"><title>medal</title><path d="M20,2H4V4L9.81,8.36C6.14,9.57 4.14,13.53 5.35,17.2C6.56,20.87 10.5,22.87 14.19,21.66C17.86,20.45 19.86,16.5 18.65,12.82C17.95,10.71 16.3,9.05 14.19,8.36L20,4V2M14.94,19.5L12,17.78L9.06,19.5L9.84,16.17L7.25,13.93L10.66,13.64L12,10.5L13.34,13.64L16.75,13.93L14.16,16.17L14.94,19.5Z" /></svg>Conquistas</button><button id="leaderboardBtn"><svg class="menu-action-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true"><title>clipboard-list</title><path d="M19 3H14.82C14.4 1.84 13.3 1 12 1S9.6 1.84 9.18 3H5C3.9 3 3 3.9 3 5V19C3 20.1 3.9 21 5 21H19C20.1 21 21 20.1 21 19V5C21 3.9 20.1 3 19 3M7 8H9V12H8V9H7V8M10 17V18H7V17.08L9 15H7V14H9.25C9.66 14 10 14.34 10 14.75C10 14.95 9.92 15.14 9.79 15.27L8.12 17H10M11 4C11 3.45 11.45 3 12 3S13 3.45 13 4 12.55 5 12 5 11 4.55 11 4M17 17H12V15H17V17M17 11H12V9H17V11Z" /></svg>Placar</button><button data-screen="settings"><svg class="menu-action-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true"><title>cog</title><path d="M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.21,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.21,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.67 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z" /></svg>Configurações</button></div></div><aside class="mission-panel"><div class="mission-label">Operação atual</div><h2>DEFENDER O NÚCLEO</h2><p>Selecione um mapa para iniciar a próxima operação.</p><div class="core-orbit"><div class="core-symbol">✦</div></div><div class="menu-stats"><div class="menu-stat"><small>Mapas</small><b>03</b></div><div class="menu-stat"><small>Torres</small><b>05</b></div><div class="menu-stat"><small>Ameaças</small><b>∞</b></div></div></aside></div><div class="menu-footer"><span>GRID 07-A</span><span>VERSÃO // 1.0.0</span><span>AUTO-TARGET READY</span></div></div></section>
-  <section id="enemiesScreen" class="screen"><div class="screen-card narrow"><div class="catalog-head"><div><h2><svg class="screen-heading-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true"><title>ghost</title><path d="M12,2A9,9 0 0,0 3,11V22L6,19L9,22L12,19L15,22L18,19L21,22V11A9,9 0 0,0 12,2M9,8A2,2 0 0,1 11,10A2,2 0 0,1 9,12A2,2 0 0,1 7,10A2,2 0 0,1 9,8M15,8A2,2 0 0,1 17,10A2,2 0 0,1 15,12A2,2 0 0,1 13,10A2,2 0 0,1 15,8Z" /></svg>Inimigos</h2><p>Identifique a ameaça antes de escolher a resposta.</p></div><button data-screen="menu">Voltar</button></div><div class="catalog-grid"><div class="catalog-item" style="--accent:#ff4e5e"><div class="catalog-icon">◆</div><strong>SCOUT</strong><small>Unidade básica, sem resistências.</small></div><div class="catalog-item" style="--accent:#65ffac"><div class="catalog-icon">»</div><strong>RUNNER</strong><small>Alta velocidade e vida reduzida.</small></div><div class="catalog-item" style="--accent:#ff7048"><div class="catalog-icon">✹</div><strong>EMBER</strong><small>Resistente a Pulse, Frost, Cannon e Nova.</small></div><div class="catalog-item" style="--accent:#ff9a31"><div class="catalog-icon">⬢</div><strong>HEAVY</strong><small>Blindado, lento e com muita vida.</small></div><div class="catalog-item" style="--accent:#70d8ff"><div class="catalog-icon">◇</div><strong>PHASE</strong><small>Resistente ao Rail e ao dano de área.</small></div><div class="catalog-item" style="--accent:#ffcf5c"><div class="catalog-icon">★</div><strong>CHEFES</strong><small>Aparecem a cada 5 ondas com habilidades únicas.</small></div></div></div></section>
-  <section id="towersScreen" class="screen"><div class="screen-card"><div class="catalog-head"><div><h2><svg class="screen-heading-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true"><title>chess-rook</title><path d="M5,20H19V22H5V20M17,2V5H15V2H13V5H11V2H9V5H7V2H5V8H7V18H17V8H19V2H17Z" /></svg>Enciclopédia de torres</h2><p>Consulte habilidades, estatísticas e requisitos de desbloqueio do arsenal Sentinela.</p></div><button data-screen="menu">Voltar</button></div><div class="tower-gallery"><div class="tower-gallery-grid"><button class="tower-gallery-card selected" data-gallery-tower="pulse" style="--tower-color:#52ddff"><div class="catalog-icon">◉</div><strong>PULSE</strong><small>Controle de rota</small><span class="tower-badge">INICIAL</span></button><button class="tower-gallery-card" data-gallery-tower="cannon" style="--tower-color:#ffb84d"><div class="catalog-icon">✦</div><strong>CANHÃO</strong><small>Explosão curta</small><span class="tower-badge">INICIAL</span></button><button class="tower-gallery-card" data-gallery-tower="frost" style="--tower-color:#76e6ff"><div class="catalog-icon">❄</div><strong>FROST</strong><small>Congelamento intenso</small><span class="tower-badge">CITADELA · ONDA 5</span></button><button class="tower-gallery-card" data-gallery-tower="nova" style="--tower-color:#ff7a9f"><div class="catalog-icon">✺</div><strong>NOVA</strong><small>Explosão ampliada</small><span class="tower-badge">CROSSWIND · ONDA 5</span></button><button class="tower-gallery-card" data-gallery-tower="rail" style="--tower-color:#b984ff"><div class="catalog-icon">╋</div><strong>RAIL</strong><small>Impacto concentrado</small><span class="tower-badge">ABISMO · ONDA 5</span></button></div><article class="tower-detail" id="towerDetail"><div class="tower-detail-head"><div class="catalog-icon" id="towerDetailIcon">◉</div><div><h3 id="towerDetailName">PULSE</h3><div class="role" id="towerDetailRole">CONTROLE · INICIAL</div></div></div><p id="towerDetailDescription">Emite pulsos de energia que reduzem a velocidade dos invasores, criando uma janela segura para o restante do arsenal.</p><div class="tower-stats"><div class="tower-stat"><small>Dano base</small><b id="towerStatDamage">22</b></div><div class="tower-stat"><small>Alcance</small><b id="towerStatRange">155</b></div><div class="tower-stat"><small>Cadência</small><b id="towerStatRate">0,70s</b></div></div><div class="tower-unlock" id="towerDetailUnlock">Disponível desde o início da operação.</div></article></div></div></section>
-  <section id="settingsScreen" class="screen"><div class="screen-card narrow"><div class="catalog-head"><div><h2><svg class="screen-heading-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true"><title>cog</title><path d="M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.21,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.21,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.67 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z" /></svg>Configurações</h2><p>Ajuste a experiência de combate ao seu estilo de jogo.</p></div><button data-screen="menu">Voltar</button></div><div class="settings-panel"><div class="settings-row"><div class="settings-row-head"><div><strong>Volume do áudio</strong><br><small>Disparos, impactos e alertas da operação.</small></div><span class="settings-value" id="volumeValue">70%</span></div><input id="volumeRange" type="range" min="0" max="100" step="5" value="70" aria-label="Volume do áudio"></div><div class="settings-row"><div class="settings-row-head"><div><strong>Qualidade gráfica</strong><br><small>Define a quantidade de partículas e efeitos visuais.</small></div><span class="settings-value" id="qualityValue">ALTA</span></div><div class="quality-options"><button class="quality-option" data-quality="low"><b>BAIXA</b><small>Essencial</small></button><button class="quality-option selected" data-quality="high"><b>ALTA</b><small>Equilibrada</small></button><button class="quality-option" data-quality="ultra"><b>ULTRA</b><small>Mais efeitos</small></button></div></div><div class="settings-preview"><div class="preview-card"><h3>Preview de efeitos</h3><p>Altere a qualidade e observe a densidade de partículas em tempo real.</p><canvas id="settingsPreviewCanvas" width="560" height="180" aria-label="Preview de qualidade gráfica"></canvas></div><button id="testAudio" class="preview-card audio-test"><span><span class="sound-icon">◖)))</span><b>Testar áudio</b><small>Reproduzir com o volume atual</small></span></button></div></div></div></section>
-  <dialog id="talentDialog" class="talent-dialog"><div class="install-head"><h2>Árvore de talentos</h2><p>Gaste créditos entre as ondas para evoluir o arsenal.</p></div><div class="talent-status"><span>CRÉDITOS DISPONÍVEIS</span><b id="talentMoney">120¢</b></div><div class="talent-tree"><div class="talent-node" data-talent="damage"><div class="talent-node-icon">⚔</div><strong>Arsenal</strong><small>+8% dano das torres por nível</small><button class="talent-buy" data-buy-talent="damage"><span class="talent-cost">100¢</span></button></div><div class="talent-node" data-talent="speed"><div class="talent-node-icon">◌</div><strong>Engrenagens</strong><small>+6% cadência das torres por nível</small><button class="talent-buy" data-buy-talent="speed"><span class="talent-cost">100¢</span></button></div><div class="talent-node" data-talent="economy"><div class="talent-node-icon">¤</div><strong>Suprimentos</strong><small>+3 créditos por abate por nível</small><button class="talent-buy" data-buy-talent="economy"><span class="talent-cost">100¢</span></button></div><div class="talent-node" data-talent="core"><div class="talent-node-icon">✦</div><strong>Comando</strong><small>Cooldowns ativos menores por nível</small><button class="talent-buy" data-buy-talent="core"><span class="talent-cost">100¢</span></button></div></div><div class="install-foot"><button id="closeTalents">Fechar</button></div></dialog><dialog id="installDialog"><div class="install-head"><h2>Instalar torre</h2><p>Escolha uma especialização para este encaixe · custo base 40 créditos</p></div><div class="tower-options"><button class="tower-option" data-tower="pulse" style="--option-color:#52ddff"><b>PULSE</b><small>Lentidão 45%<br>Controle de rota</small><span>40¢</span></button><button class="tower-option" data-tower="cannon" style="--option-color:#ffb84d"><b>CANHÃO</b><small>Dano em área<br>Explosão curta</small><span>40¢</span></button><button class="tower-option" data-tower="frost" style="--option-color:#76e6ff"><b>FROST</b><small>Lentidão intensa<br>Congelamento</small><span>40¢</span></button><button class="tower-option" data-tower="nova" style="--option-color:#ff7a9f"><b>NOVA</b><small>Splash ampliado<br>Raio explosivo</small><span>40¢</span></button><button class="tower-option" data-tower="rail" style="--option-color:#b984ff"><b>RAIL</b><small>Dano concentrado<br>Alto impacto</small><span>40¢</span></button></div><div class="install-foot"><button id="cancelInstall">Cancelar</button></div></dialog>
-  <dialog id="achievementDialog" class="achievements"><div class="install-head"><h2><svg class="screen-heading-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true"><title>medal</title><path d="M20,2H4V4L9.81,8.36C6.14,9.57 4.14,13.53 5.35,17.2C6.56,20.87 10.5,22.87 14.19,21.66C17.86,20.45 19.86,16.5 18.65,12.82C17.95,10.71 16.3,9.05 14.19,8.36L20,4V2M14.94,19.5L12,17.78L9.06,19.5L9.84,16.17L7.25,13.93L10.66,13.64L12,10.5L13.34,13.64L16.75,13.93L14.16,16.17L14.94,19.5Z" /></svg>Conquistas <span id="achievementCount"></span></h2><p>Desbloqueios persistentes deste setor</p></div><div class="achievement-list" id="achievementList"></div><div class="install-foot"><button id="closeAchievements">Fechar</button></div></dialog>
-  <dialog id="leaderboardDialog" class="achievements"><div class="install-head"><h2><svg class="screen-heading-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true"><title>clipboard-list</title><path d="M19 3H14.82C14.4 1.84 13.3 1 12 1S9.6 1.84 9.18 3H5C3.9 3 3 3.9 3 5V19C3 20.1 3.9 21 5 21H19C20.1 21 21 20.1 21 19V5C21 3.9 20.1 3 19 3M7 8H9V12H8V9H7V8M10 17V18H7V17.08L9 15H7V14H9.25C9.66 14 10 14.34 10 14.75C10 14.95 9.92 15.14 9.79 15.27L8.12 17H10M11 4C11 3.45 11.45 3 12 3S13 3.45 13 4 12.55 5 12 5 11 4.55 11 4M17 17H12V15H17V17M17 11H12V9H17V11Z" /></svg>Leaderboard</h2><p>Melhores pontuações salvas neste navegador</p></div><div class="leaderboard-list" id="leaderboardList"></div><div class="install-foot"><button id="closeLeaderboard">Fechar</button></div></dialog>
-  <dialog id="phaseStatsDialog" class="phase-stats"><h2>Fase concluída</h2><p id="phaseStatsSubtitle">Desempenho da operação</p><div class="phase-stat-grid"><div class="phase-stat"><b id="phaseBuilt">0</b><small>Torres construídas</small></div><div class="phase-stat"><b id="phaseDefeated">0</b><small>Inimigos derrotados</small></div><div class="phase-stat"><b id="phaseDamage">0</b><small>Dano total</small></div></div><div class="install-foot"><div class="phase-nav"><button id="phaseHome" class="game-control icon-control" aria-label="Voltar ao menu inicial" title="Voltar ao menu inicial"><svg class="control-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true"><title>Voltar ao menu inicial</title><path d="M12,3L20,9V21H15V14H9V21H4V9L12,3Z" /></svg></button><button id="phaseMaps" class="game-control icon-control" aria-label="Voltar à lista de fases" title="Voltar à lista de fases"><svg class="control-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true"><title>Selecionar novo mapa</title><path d="M9,3L3.36,4.9C3.15,4.97 3,5.15 3,5.38V20.5A0.5,0.5 0 0 0 3.5,21L3.66,20.97L9,18.9L15,21L20.64,19.1C20.85,19.03 21,18.85 21,18.62V3.5A0.5,0.5 0 0 0 20.5,3L20.34,3.03L15,5.1L9,3M8,5.45V17.15L5,18.31V6.46L8,5.45M10,5.47L14,6.87V18.53L10,17.13V5.47M19,5.7V17.54L16,18.55V6.86L19,5.7M7.46,6.3L5.57,6.97V9.12L7.46,8.45V6.3M7.46,9.05L5.57,9.72V11.87L7.46,11.2V9.05M7.46,11.8L5.57,12.47V14.62L7.46,13.95V11.8M7.46,14.55L5.57,15.22V17.37L7.46,16.7V14.55Z" /></svg></button></div><button id="closePhaseStats" class="primary">Continuar operação</button></div></dialog>
-  <dialog id="mapDialog"><div class="install-head"><h2><svg class="screen-heading-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true"><title>Selecionar novo mapa</title><path d="M9,3L3.36,4.9C3.15,4.97 3,5.15 3,5.38V20.5A0.5,0.5 0 0 0 3.5,21L3.66,20.97L9,18.9L15,21L20.64,19.1C20.85,19.03 21,18.85 21,18.62V3.5A0.5,0.5 0 0 0 20.5,3L20.34,3.03L15,5.1L9,3M8,5.45V17.15L5,18.31V6.46L8,5.45M10,5.47L14,6.87V18.53L10,17.13V5.47M19,5.7V17.54L16,18.55V6.86L19,5.7M7.46,6.3L5.57,6.97V9.12L7.46,8.45V6.3M7.46,9.05L5.57,9.72V11.87L7.46,11.2V9.05M7.46,11.8L5.57,12.47V14.62L7.46,13.95V11.8M7.46,14.55L5.57,15.22V17.37L7.46,16.7V14.55Z" /></svg>Selecionar mapa</h2><p>Escolha uma rota e um nível de desafio para iniciar a operação.</p></div><div class="map-picker"><aside class="map-list"><h3>Mapas disponíveis</h3><button class="map-select selected" data-map="citadel" style="--map-color:#ffb84d"><b>CITADELA</b><small>Equilibrado</small></button><button class="map-select" data-map="crosswind" style="--map-color:#52ddff"><b>CROSSWIND</b><small>Zigue-zague</small></button><button class="map-select" data-map="abyss" style="--map-color:#c893ff"><b>ABISMO</b><small>Corredor dividido</small></button></aside><section class="map-detail"><h3 id="mapDetailTitle">CITADELA</h3><p id="mapDetailDescription">Rota sinuosa e equilibrada, ideal para aprender a combinar controle, dano em área e impacto concentrado.</p><canvas id="mapPreviewCanvas" width="560" height="200" aria-label="Preview do mapa selecionado"></canvas><div class="difficulty"><h3>Dificuldade</h3><div class="difficulty-options"><button class="difficulty-select selected" data-difficulty="standard"><b>PADRÃO</b><small>Experiência equilibrada</small></button><button class="difficulty-select" data-difficulty="veteran"><b>VETERANO</b><small>+35% vida · +20% velocidade</small></button><button class="difficulty-select" data-difficulty="nightmare"><b>PESADELO</b><small>+75% vida · +45% velocidade</small></button></div></div><div class="install-foot"><button id="closeMap">Cancelar</button><button id="startSelectedMap" class="primary" aria-label="Iniciar mapa" title="Iniciar mapa">▶</button></div></section></div></dialog>
-  <section id="gameShell" class="shell">
-    <header>
-      <div class="brand"><div class="mark">✦</div><div><h1>Sentinela</h1><div class="sub">Protocolo de defesa // setor 07</div></div></div>
-      <div class="stats">
-        <div class="stat"><small><svg class="stat-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true"><title>cash-multiple</title><path d="M5,6H23V18H5V6M14,9A3,3 0,0,1 17,12A3,3 0,0,1 14,15A3,3 0,0,1 11,12A3,3 0,0,1 14,9M9,8A2,2 0,0,1 7,10V14A2,2 0,0,1 9,16H19A2,2 0,0,1 21,14V10A2,2 0,0,1 19,8H9M1,10H3V20H19V22H1V10Z" /></svg>Créditos</small><b id="money">120</b></div>
-        <div class="stat"><small><svg class="stat-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true"><title>heart</title><path d="M12,21.35L10.55,20.03C5.4,15.36 2,12.27 2,8.5C2,5.41 4.42,3 7.5,3C9.24,3 10.91,3.81 12,5.08C13.09,3.81 14.76,3 16.5,3C19.58,3 22,5.41 22,8.5C22,12.27 18.6,15.36 13.45,20.03L12,21.35Z" /></svg>Núcleo</small><b id="lives">10</b></div>
-        <div class="stat"><small><svg class="stat-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true"><title>sword-cross</title><path d="M6.2,2.44L18.1,14.34L20.22,12.22L21.63,13.63L19.16,16.1L22.34,19.28C22.73,19.67 22.73,20.3 22.34,20.69L21.63,21.4C21.24,21.79 20.61,21.79 20.22,21.4L17,18.23L14.56,20.7L13.15,19.29L15.27,17.17L3.37,5.27V2.44H6.2M15.89,10L20.63,5.26V2.44H17.8L13.06,7.18L15.89,10M10.94,15L8.11,12.13L5.9,14.34L3.78,12.22L2.37,13.63L4.84,16.1L1.66,19.29C1.27,19.68 1.27,20.31 1.66,20.7L2.37,21.41C2.76,21.8 3.39,21.8 3.78,21.41L7,18.23L9.44,20.7L10.85,19.29L8.73,17.17L10.94,15Z" /></svg>Onda</small><b id="wave">0 / 8</b></div>
-        <div class="stat"><small><svg class="stat-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true"><title>knife-military</title><path d="M22,2L17.39,3.75L10.46,10.68L14,14.22L20.92,7.29C22.43,5.78 22,2 22,2M8.33,10L6.92,11.39L8.33,12.8L2.68,18.46L6.21,22L11.87,16.34L13.28,17.76L14.7,16.34L8.33,10Z" /></svg>Abates</small><b id="kills">0</b></div>
-        <div class="stat"><small><svg class="stat-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true"><title>medal</title><path d="M20,2H4V4L9.81,8.36C6.14,9.57 4.14,13.53 5.35,17.2C6.56,20.87 10.5,22.87 14.19,21.66C17.86,20.45 19.86,16.5 18.65,12.82C17.95,10.71 16.3,9.05 14.19,8.36L20,4V2M14.94,19.5L12,17.78L9.06,19.5L9.84,16.17L7.25,13.93L10.66,13.64L12,10.5L13.34,13.64L16.75,13.93L14.16,16.17L14.94,19.5Z" /></svg>Pontos</small><b id="score">0</b></div>
-        <div class="stat"><small><svg class="stat-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true"><title>finance</title><path d="M6,16.5L3,19.44V11H6M11,14.66L9.43,13.32L8,14.64V7H11M16,13L13,16V3H16M18.81,12.81L17,11H22V16L20.21,14.21L13,21.36L9.53,18.34L5.75,22H3L9.47,15.66L13,18.64" /></svg>Recorde</small><b id="record">0</b></div>
-      </div>
-    </header>
-    <main>
-      <canvas id="game" width="1152" height="648" aria-label="Jogo tower defense"></canvas>
-      <div class="toast" id="toast"></div>
-      <aside class="upgrade" id="upgrade"><button class="close" id="closeUpgrade">×</button><h2 id="upgradeTitle">Torre selecionada</h2><p>Nível <span class="level" id="upgradeLevel">1</span> · <span id="upgradeStats">alcance 155</span></p><button id="damageBtn">Potência <span id="damageCost">35¢</span></button><button id="speedBtn">Cadência <span id="speedCost">45¢</span></button><button id="rangeBtn">Alcance <span id="rangeCost">40¢</span></button><div class="targeting"><div class="targeting-head"><strong>PRIORIDADE DE MIRA</strong><span id="targetModeHint">Mais progresso no caminho</span></div><div class="targeting-options"><button type="button" class="target-mode selected" data-target-mode="front" title="Prioriza o inimigo mais avançado"><b>À frente</b><small>Mais avançado</small></button><button type="button" class="target-mode" data-target-mode="back" title="Prioriza o inimigo mais atrasado"><b>Atrás</b><small>Mais recuado</small></button><button type="button" class="target-mode" data-target-mode="near" title="Prioriza o inimigo mais próximo da torre"><b>Mais próximo</b><small>Distância</small></button><button type="button" class="target-mode" data-target-mode="mostHp" title="Prioriza o inimigo com mais vida"><b>Mais vida</b><small>HP máximo</small></button><button type="button" class="target-mode" data-target-mode="leastHp" title="Prioriza o inimigo com menos vida"><b>Menos vida</b><small>Finalizar</small></button></div></div><button id="sellBtn" class="sell">Vender torre <span id="sellValue">+28¢</span></button></aside>
-      <div class="toolbar">
-        <div class="hint">Clique em um encaixe para instalar. Clique numa torre para abrir upgrades.</div>
-        <div class="legend"><span><i class="dot" style="background:#52ddff"></i>torre</span><span><i class="dot" style="background:#ff5c68"></i>invasor</span><span><i class="dot" style="background:#ffb84d"></i>rota</span></div>
-        <div class="actions"><button id="backMenu" class="game-control icon-control" aria-label="Menu inicial" title="Menu inicial"><svg class="control-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true"><title>Voltar ao menu inicial</title><path d="M12,3L20,9V21H15V14H9V21H4V9L12,3Z" /></svg></button><button id="waveBtn" class="game-control icon-control primary" aria-label="Iniciar onda" title="Iniciar onda"><svg class="control-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true"><title>play</title><path d="M8,5.14V19.14L19,12.14L8,5.14Z" /></svg></button><button id="meteorBtn" class="game-control ability-control" aria-label="Chuva de meteoros" title="Chuva de meteoros">☄</button><button id="freezeBtn" class="game-control ability-control" aria-label="Congelamento global" title="Congelamento global">❄</button><button id="talentBtn" class="game-control ability-control" aria-label="Árvore de talentos" title="Árvore de talentos">✦</button><button id="reset" class="game-control icon-control danger" aria-label="Reiniciar partida" title="Reiniciar partida">↻</button></div>
-      </div>
-    </main>
-  </section>
-<script>
-(() => {
-  const canvas = document.getElementById('game'), ctx = canvas.getContext('2d');
-  const W=canvas.width,H=canvas.height;
-  const shieldPath=new Path2D('M12,1L3,5V11C3,16.55 6.84,21.74 12,23C17.16,21.74 21,16.55 21,11V5L12,1Z');
-  const difficultyDefs={standard:{name:'PADRÃO',hp:1,speed:1,score:1},veteran:{name:'VETERANO',hp:1.35,speed:1.2,score:1.35},nightmare:{name:'PESADELO',hp:1.75,speed:1.45,score:1.8}};
-  const mapDefs={citadel:{name:'CITADELA',accent:'#ffb84d',path:[[-40,560],[115,560],[190,475],[190,330],[350,330],[435,415],[620,415],[710,300],[710,175],[900,175],[1010,280],[1190,280]],pads:[{x:120,y:435},{x:300,y:250},{x:410,y:500},{x:560,y:315},{x:800,y:115},{x:800,y:300},{x:1010,y:410}]},crosswind:{name:'CROSSWIND',accent:'#52ddff',path:[[-40,110],[170,110],[250,200],[250,500],[430,500],[510,400],[510,150],[700,150],[780,260],[780,520],[980,520],[1080,400],[1190,400]],pads:[{x:130,y:240},{x:330,y:150},{x:170,y:470},{x:390,y:390},{x:610,y:260},{x:900,y:420},{x:1030,y:280}]},abyss:{name:'ABISMO',accent:'#c893ff',path:[[-40,320],[140,320],[220,210],[420,210],[500,320],[420,430],[220,430],[300,540],[570,540],[680,430],[820,430],[900,300],[1190,300]],pads:[{x:120,y:190},{x:300,y:120},{x:350,y:310},{x:120,y:500},{x:560,y:440},{x:760,y:520},{x:980,y:390}]}};
-  const mapDescriptions={citadel:'Rota sinuosa e equilibrada, ideal para aprender a combinar controle, dano em área e impacto concentrado.',crosswind:'Zigue-zague longo com curvas alternadas, favorecendo torres de alcance e leituras antecipadas.',abyss:'Corredor dividido com aproximação final, exigindo cobertura de vários ângulos e respostas rápidas.'};
-  const campaignDefs={citadel:{label:'FASE 1 · DISPONÍVEL'},crosswind:{label:'FASE 2 · conclua 5 ondas em CITADELA',requires:'citadel',waves:5},abyss:{label:'FASE 3 · conclua 10 ondas em CROSSWIND',requires:'crosswind',waves:10}};
-  let mapId='citadel',selectedMapId='citadel',difficultyId='standard',selectedDifficultyId='standard',path=mapDefs[mapId].path, pads=mapDefs[mapId].pads;
-  const towerTypes=[{id:'pulse',name:'PULSE',color:'#52ddff',ability:'Lentidão 45%'},{id:'cannon',name:'CANHÃO',color:'#ffb84d',ability:'Dano em área'},{id:'frost',name:'FROST',color:'#76e6ff',ability:'Lentidão intensa',unlockMap:'citadel'},{id:'nova',name:'NOVA',color:'#ff7a9f',ability:'Splash ampliado',unlockMap:'crosswind'},{id:'rail',name:'RAIL',color:'#b984ff',ability:'Dano concentrado',unlockMap:'abyss'}];
-  const towerGalleryDefs={pulse:{icon:'◉',role:'CONTROLE · INICIAL',description:'Emite pulsos de energia que reduzem a velocidade dos invasores, criando uma janela segura para o restante do arsenal.',damage:22,range:155,rate:'.70s',unlock:'Disponível desde o início da operação.'},cannon:{icon:'✦',role:'ÁREA · INICIAL',description:'Projéteis pesados explodem no impacto e atingem inimigos próximos, excelente contra grupos compactos.',damage:22,range:155,rate:'.70s',unlock:'Disponível desde o início da operação.'},frost:{icon:'❄',role:'CONTROLE · ESPECIAL',description:'Congela a rota com um disparo criogênico. Sua lentidão intensa combina com torres de alto dano.',damage:20,range:155,rate:'.82s',unlock:'Desbloqueio: alcance a onda 5 no mapa CITADELA.'},nova:{icon:'✺',role:'ÁREA · ESPECIAL',description:'Libera uma explosão de amplo raio, causando dano splash elevado a múltiplos alvos.',damage:26,range:165,rate:'.90s',unlock:'Desbloqueio: alcance a onda 5 no mapa CROSSWIND.'},rail:{icon:'╋',role:'IMPACTO · ESPECIAL',description:'Canaliza um feixe concentrado capaz de atravessar resistências e eliminar ameaças prioritárias.',damage:34,range:145,rate:'1.05s',unlock:'Desbloqueio: alcance a onda 5 no mapa ABISMO.'}};
-  const enemyTypes={scout:{name:'SCOUT',color:'#ff4e5e',resist:{pulse:0,cannon:0,rail:0}},heavy:{name:'HEAVY',color:'#ff9a31',resist:{pulse:.2,cannon:.35,rail:0}},runner:{name:'RUNNER',color:'#65ffac',resist:{pulse:.15,cannon:0,rail:.1},speed:1.75},elemental:{name:'EMBER',color:'#ff7048',resist:{pulse:.7,frost:.82,cannon:.55,nova:.65,rail:0},speed:1},null:{name:'NULO',color:'#e58cff',resist:{pulse:.78,cannon:0,rail:.15}},phase:{name:'PHASE',color:'#70d8ff',resist:{pulse:0,cannon:.15,rail:.7}},armored:{name:'ARMOR',color:'#d2d8df',resist:{pulse:0,cannon:.7,rail:.25}}};
-  const achievementDefs=[{id:'first-tower',title:'Primeira Sentinela',desc:'Instale sua primeira torre.',test:()=>towers.length>0},{id:'wave-five',title:'Linha de Frente',desc:'Alcance a onda 5.',test:()=>wave>=5},{id:'wave-ten',title:'Ameaça Extrema',desc:'Alcance a onda 10.',test:()=>wave>=10},{id:'hunter',title:'Caçador',desc:'Consiga 25 abates.',test:()=>kills>=25},{id:'boss-slayer',title:'Queda do Colosso',desc:'Derrote um chefe.',test:()=>bossKills>0},{id:'arsenal',title:'Arsenal Completo',desc:'Tenha Pulse, Canhão e Rail.',test:()=>new Set(towers.map(t=>t.type)).size===3},{id:'engineer',title:'Engenheiro',desc:'Aplique 5 melhorias.',test:()=>towers.reduce((n,t)=>n+t.level-1,0)>=5}];
-  let money=120,lives=10,wave=0,kills=0,bossKills=0,score=0,bestWave=0,bestKills=0,unlocked=[],unlockedTowers=['pulse','cannon'],mapProgress={citadel:0,crosswind:0,abyss:0},phaseStats={built:0,defeated:0,damage:0},volume=.7,quality='high',leaderboard=[],previewTimer=null,runSubmitted=false,paused=false,gameOver=false,spawning=false,spawnLeft=0,spawnTimer=0,spawnTotal=0,clock=0,saveClock=0,last=0,selectedTower=null,pendingPad=null;
-  let towers=[],enemies=[],shots=[],particles=[],bursts=[],screenShake=0,audioCtx=null,musicOsc=null,musicGain=null,musicTimer=null,musicStep=0,meteorCooldown=0,freezeCooldown=0,talents={damage:0,speed:0,economy:0,core:0};
-  const $=id=>document.getElementById(id);
-  const SAVE_KEY='sentinela-save-v1', RECORD_KEY='sentinela-record-v1', LEADERBOARD_KEY='sentinela-leaderboard-v1';
-  function audio(){if(!audioCtx)audioCtx=new (window.AudioContext||window.webkitAudioContext)();return audioCtx}
-  function toneNow(kind,ac){const o=ac.createOscillator(),g=ac.createGain(),now=ac.currentTime;o.connect(g);g.connect(ac.destination);o.type=kind==='boom'?'sawtooth':kind==='deploy'?'sine':kind==='shield'?'square':'triangle';const f=kind==='shot'?420:kind==='hit'?170:kind==='boom'?92:kind==='deploy'?260:kind==='shield'?680:kind==='wave'?220:kind==='boss'?95:260;o.frequency.setValueAtTime(f,now);o.frequency.exponentialRampToValueAtTime(kind==='boom'?42:kind==='deploy'?620:f*.55,now+(kind==='deploy'?.18:.11));g.gain.setValueAtTime((kind==='boom'?.045:kind==='deploy'?.04:.025)*volume,now);g.gain.exponentialRampToValueAtTime(.001,now+(kind==='deploy'?.2:.13));o.start(now);o.stop(now+(kind==='deploy'?.21:.13))}
-  function playAdaptiveStep(){try{if(!audioCtx||!musicGain||volume<=0)return;const boss=wave>0&&wave%5===0,scale=boss?[0,1,6,7,8,13,14,19]:[0,2,4,7,9,12,14,16],step=musicStep++,root=92+Math.min(12,wave)*3+(boss?18:0),lead=root*Math.pow(2,scale[step%scale.length]/12),now=audioCtx.currentTime;const leadOsc=audioCtx.createOscillator(),leadGain=audioCtx.createGain();leadOsc.type=boss?'sawtooth':'triangle';leadOsc.frequency.setValueAtTime(lead,now);leadGain.gain.setValueAtTime(0,now);leadGain.gain.linearRampToValueAtTime((boss?.018:.012)*volume,now+.025);leadGain.gain.exponentialRampToValueAtTime(.001,now+.18);leadOsc.connect(leadGain);leadGain.connect(musicGain);leadOsc.start(now);leadOsc.stop(now+.2);if(step%4===0){const bass=audioCtx.createOscillator(),bassGain=audioCtx.createGain();bass.type='sine';bass.frequency.setValueAtTime(root/2,now);bassGain.gain.setValueAtTime((boss?.025:.014)*volume,now);bassGain.gain.exponentialRampToValueAtTime(.001,now+.42);bass.connect(bassGain);bassGain.connect(musicGain);bass.start(now);bass.stop(now+.44)}}catch(e){}}
-  function startAdaptiveMusic(){try{const ac=audio();if(!musicGain){musicGain=ac.createGain();musicGain.gain.value=1;musicGain.connect(ac.destination)}if(!musicTimer){musicStep=0;playAdaptiveStep();musicTimer=setInterval(playAdaptiveStep,190)}updateAdaptiveMusic()}catch(e){}}
-  function updateAdaptiveMusic(){if(!musicGain||!audioCtx)return;const boss=wave>0&&wave%5===0;musicGain.gain.setTargetAtTime((boss?.72:.55)*Math.max(.15,volume),audioCtx.currentTime,.35)}
-  function tone(kind){try{if(volume<=0)return;const ac=audio();if(ac.state==='suspended'){ac.resume().then(()=>{if(volume>0)toneNow(kind,ac)}).catch(()=>{});return}toneNow(kind,ac)}catch(e){}}
-  let achievementQueue=[],achievementShowing=false,shieldSoundClock=-1;
-  function notify(text){const el=$('toast');el.textContent=text;el.classList.add('show');clearTimeout(notify.t);notify.t=setTimeout(()=>el.classList.remove('show'),1800)}
-  function showAchievement(a){achievementQueue.push(a);if(achievementShowing)return;const next=()=>{const item=achievementQueue.shift();if(!item){achievementShowing=false;return}achievementShowing=true;$('achievementToastTitle').textContent=item.title;$('achievementToastDesc').textContent=item.desc;$('achievementToast').classList.add('show');clearTimeout(showAchievement.t);showAchievement.t=setTimeout(()=>{$('achievementToast').classList.remove('show');setTimeout(next,280)},3400)};next()}
-  function saveState(){try{bestWave=Math.max(bestWave,wave);bestKills=Math.max(bestKills,kills);localStorage.setItem(SAVE_KEY,JSON.stringify({mapId,difficultyId,volume,quality,money,lives,wave,kills,bossKills,score,unlocked,unlockedTowers,mapProgress,phaseStats,meteorCooldown,freezeCooldown,talents,towers:towers.map(t=>({pad:t.pad,type:t.type,level:t.level,damage:t.damage,range:t.range,rate:t.rate,targetMode:t.targetMode||'front',angle:t.angle||0,upgrades:t.upgrades}))}));localStorage.setItem(RECORD_KEY,JSON.stringify({wave:bestWave,kills:bestKills}));localStorage.setItem(LEADERBOARD_KEY,JSON.stringify(leaderboard))}catch(e){}}
-  function checkAchievements(){achievementDefs.forEach(a=>{if(!unlocked.includes(a.id)&&a.test()){unlocked.push(a.id);showAchievement(a);notify('Conquista desbloqueada: '+a.title);try{tone('unlock')}catch(e){}}})}
-  function renderAchievements(){const list=$('achievementList');const done=achievementDefs.filter(a=>unlocked.includes(a.id)).length;$('achievementCount').textContent=done+'/'+achievementDefs.length;list.innerHTML=achievementDefs.map(a=>'<div class="achievement '+(unlocked.includes(a.id)?'':'locked')+'"><strong>'+(unlocked.includes(a.id)?'✓ ':'◻ ')+a.title+'</strong><small>'+a.desc+'</small></div>').join('')}
-  function renderLeaderboard(){const list=$('leaderboardList');list.innerHTML=leaderboard.length?leaderboard.map((r,i)=>'<div class="score-row"><strong>#'+(i+1)+'</strong><small>Onda '+r.wave+' · '+r.kills+' abates · '+r.date+'</small><b>'+r.score.toLocaleString('pt-BR')+'</b></div>').join(''):'<div class="achievement"><strong>Nenhuma partida registrada</strong><small>Jogue uma onda para entrar no placar.</small></div>'}
-  function submitScore(){if(runSubmitted||score<=0)return;runSubmitted=true;leaderboard.push({score,wave,kills,bossKills,date:new Date().toLocaleDateString('pt-BR')});leaderboard.sort((a,b)=>b.score-a.score);leaderboard=leaderboard.slice(0,10);saveState()}
-  function loadState(){try{const record=JSON.parse(localStorage.getItem(RECORD_KEY)||'null');if(record){bestWave=record.wave||0;bestKills=record.kills||0}leaderboard=JSON.parse(localStorage.getItem(LEADERBOARD_KEY)||'[]');if(!Array.isArray(leaderboard))leaderboard=[];const save=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');if(!save)return;if(mapDefs[save.mapId]){mapId=save.mapId;selectedMapId=mapId;path=mapDefs[mapId].path;pads=mapDefs[mapId].pads;routeLen=pathLength()}if(difficultyDefs[save.difficultyId]){difficultyId=save.difficultyId;selectedDifficultyId=difficultyId}if(Number.isFinite(save.volume))volume=Math.max(0,Math.min(1,save.volume));if(['low','high','ultra'].includes(save.quality))quality=save.quality;money=Number.isFinite(save.money)?save.money:120;lives=Number.isFinite(save.lives)?save.lives:10;wave=Number.isFinite(save.wave)?save.wave:0;kills=Number.isFinite(save.kills)?save.kills:0;bossKills=save.bossKills||0;score=save.score||0;unlocked=Array.isArray(save.unlocked)?save.unlocked:[];unlockedTowers=Array.isArray(save.unlockedTowers)?[...new Set(['pulse','cannon',...save.unlockedTowers])]:['pulse','cannon'];mapProgress={...mapProgress,...(save.mapProgress||{})};phaseStats={built:Number(save.phaseStats?.built)||0,defeated:Number(save.phaseStats?.defeated)||0,damage:Number(save.phaseStats?.damage)||0};meteorCooldown=Math.max(0,Number(save.meteorCooldown)||0);freezeCooldown=Math.max(0,Number(save.freezeCooldown)||0);talents={damage:Number(save.talents?.damage)||0,speed:Number(save.talents?.speed)||0,economy:Number(save.talents?.economy)||0,core:Number(save.talents?.core)||0};towers=(save.towers||[]).map(data=>{const spec=towerTypes.find(s=>s.id===data.type)||towerTypes[0],p=pads[data.pad];return p&&unlockedTowers.includes(spec.id)?{pad:data.pad,x:p.x,y:p.y,type:spec.id,typeName:spec.name,range:data.range||155,rate:data.rate||.7,cool:0,color:spec.color,target:null,targetMode:['front','back','near','mostHp','leastHp'].includes(data.targetMode)?data.targetMode:'front',angle:Number.isFinite(data.angle)?data.angle:0,level:data.level||1,damage:data.damage||22,upgrades:data.upgrades||{damage:0,speed:0,range:0}}:null}).filter(Boolean);if(wave||towers.length)notify('Progresso restaurado automaticamente')}catch(e){localStorage.removeItem(SAVE_KEY);leaderboard=[]}}
-  function towerUnlocked(id){return unlockedTowers.includes(id)}
-  function mapUnlocked(id){const rule=campaignDefs[id];return !rule.requires||(mapProgress[rule.requires]||0)>=rule.waves}
-  function refreshCampaign(){document.querySelectorAll('.map-select').forEach(btn=>{const open=mapUnlocked(btn.dataset.map);btn.disabled=!open;btn.classList.toggle('locked',!open);const rule=campaignDefs[btn.dataset.map],small=btn.querySelector('small');if(!open)small.textContent='Bloqueado · '+rule.waves+' ondas em '+mapDefs[rule.requires].name;else small.textContent=btn.dataset.map==='citadel'?'Equilibrado':btn.dataset.map==='crosswind'?'Zigue-zague':'Corredor dividido'})}
-  function completeWave(){const wasCrosswind=mapUnlocked('crosswind'),wasAbyss=mapUnlocked('abyss');mapProgress[mapId]=Math.max(mapProgress[mapId]||0,wave);refreshCampaign();if(!wasCrosswind&&mapUnlocked('crosswind'))notify('Campanha avançou · CROSSWIND desbloqueado');if(!wasAbyss&&mapUnlocked('abyss'))notify('Campanha avançou · ABISMO desbloqueado');if((mapId==='citadel'&&wave===5)||(mapId==='crosswind'&&wave===10))showPhaseStats();saveState()}
-  function unlockAvailableTowers(){towerTypes.filter(t=>t.unlockMap&&mapProgress[t.unlockMap]>=5&&!towerUnlocked(t.id)).forEach(t=>{unlockedTowers.push(t.id);notify('Nova torre desbloqueada: '+t.name);try{tone('unlock')}catch(e){}})}
-  function refreshTowerOptions(){document.querySelectorAll('.tower-option').forEach(btn=>{const spec=towerTypes.find(t=>t.id===btn.dataset.tower),open=towerUnlocked(spec.id);btn.disabled=!open;btn.classList.toggle('locked',!open);const small=btn.querySelector('small'),cost=btn.querySelector('span');if(!open){small.innerHTML='Desbloqueie ao alcançar<br>onda 5 em '+mapDefs[spec.unlockMap].name;cost.textContent='BLOQUEADA'}else{cost.textContent='40¢'}});document.querySelectorAll('[data-catalog-tower]').forEach(card=>card.classList.toggle('tower-locked',!towerUnlocked(card.dataset.catalogTower)));document.querySelectorAll('[data-gallery-tower]').forEach(card=>card.classList.toggle('locked',!towerUnlocked(card.dataset.galleryTower)))}
-  function renderTowerDetail(id){const d=towerGalleryDefs[id],spec=towerTypes.find(t=>t.id===id);if(!d||!spec)return;document.querySelectorAll('[data-gallery-tower]').forEach(card=>card.classList.toggle('selected',card.dataset.galleryTower===id));$('towerDetail').style.setProperty('--tower-color',spec.color);$('towerDetailIcon').textContent=d.icon;$('towerDetailIcon').style.setProperty('--accent',spec.color);$('towerDetailName').textContent=spec.name;$('towerDetailRole').textContent=d.role;$('towerDetailDescription').textContent=d.description;$('towerStatDamage').textContent=d.damage;$('towerStatRange').textContent=d.range;$('towerStatRate').textContent=d.rate;$('towerDetailUnlock').textContent=towerUnlocked(id)?'DESBLOQUEADA · disponível para instalação':d.unlock;$('towerDetailUnlock').style.color=towerUnlocked(id)?'#8df5bd':'#ffcf6e'}
-  function setWaveControl(){const btn=$('waveBtn'),play='<svg class="control-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true"><title>play</title><path d="M8,5.14V19.14L19,12.14L8,5.14Z" /></svg>',pause='<svg class="control-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true"><title>pause</title><path d="M14,19H18V5H14M6,19H10V5H6V19Z" /></svg>';const active=spawning&&!paused, label=active?'Pausar onda':paused&&spawning?'Retomar onda':gameOver?'Reiniciar núcleo':'Iniciar onda';btn.innerHTML=active?pause:play;btn.disabled=false;btn.setAttribute('aria-label',label);btn.setAttribute('title',label)}
-  function renderTalents(){const max=5;$('talentMoney').textContent=money+'¢';document.querySelectorAll('[data-buy-talent]').forEach(btn=>{const id=btn.dataset.buyTalent,level=talents[id]||0,cost=100*(level+1),node=btn.closest('.talent-node');btn.querySelector('.talent-cost').textContent=level>=max?'MAX':cost+'¢ · '+level+'/'+max;btn.disabled=level>=max||money<cost||spawning;node.classList.toggle('maxed',level>=max)})}
-  function openTalents(){renderTalents();$('talentDialog').showModal()}
-  function buyTalent(id){if(spawning)return notify('A árvore só pode ser usada entre as ondas');const max=5,level=talents[id]||0,cost=100*(level+1);if(level>=max)return;if(money<cost)return notify('Créditos insuficientes · custo '+cost+'¢');money-=cost;talents[id]=level+1;notify('Talento aprimorado · nível '+(level+1));renderTalents();updateHud()}
-  function updateHud(){checkAchievements();$('money').textContent=money; $('lives').textContent=lives; $('wave').textContent=wave+' / ∞'; $('kills').textContent=kills; $('score').textContent=score.toLocaleString('pt-BR'); $('record').textContent=bestWave+' / '+bestKills; $('meteorBtn').textContent=meteorCooldown>0?'☄ '+Math.ceil(meteorCooldown):'☄'; $('freezeBtn').textContent=freezeCooldown>0?'❄ '+Math.ceil(freezeCooldown):'❄'; $('meteorBtn').disabled=meteorCooldown>0||gameOver; $('freezeBtn').disabled=freezeCooldown>0||gameOver; $('talentBtn').disabled=spawning||gameOver; setWaveControl(); refreshUpgrade(); saveState(); }
-  const lerp=(a,b,t)=>a+(b-a)*t;
-  function pointAt(d){for(let i=0;i<path.length-1;i++){let [x1,y1]=path[i],[x2,y2]=path[i+1],len=Math.hypot(x2-x1,y2-y1);if(d<=len)return{x:lerp(x1,x2,d/len),y:lerp(y1,y2,d/len)};d-=len}return{x:path.at(-1)[0],y:path.at(-1)[1]}}
-  function pathLength(){let n=0;for(let i=1;i<path.length;i++)n+=Math.hypot(path[i][0]-path[i-1][0],path[i][1]-path[i-1][1]);return n}
-  let routeLen=pathLength();
-  function roundedRect(x,y,w,h,r){ctx.beginPath();ctx.roundRect(x,y,w,h,r);}
-  function drawBackground(){
-    const g=ctx.createLinearGradient(0,0,W,H);g.addColorStop(0,'#0a1c2c');g.addColorStop(1,'#06101b');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
-    ctx.strokeStyle='#17384a55';ctx.lineWidth=1; for(let x=0;x<W;x+=48){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()} for(let y=0;y<H;y+=48){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
-    // decorative panels
-    ctx.fillStyle='#0d2636aa';roundedRect(25,25,178,68,14);ctx.fill();roundedRect(925,25,195,68,14);ctx.fill();
-    ctx.fillStyle='#76c6d222';ctx.font='11px ui-monospace,monospace';ctx.fillText('SENTINELA // ONLINE',42,53);ctx.fillText('THREAT LEVEL  '+String(Math.min(9,wave+1)).padStart(2,'0'),42,73);ctx.fillText(mapDefs[mapId].name+' / LIVE',945,53);ctx.fillText('AUTO-TARGET ACTIVE',945,73);
-    // route glow + core
-    ctx.lineCap='round';ctx.lineJoin='round';ctx.strokeStyle=mapDefs[mapId].accent+'18';ctx.lineWidth=34;drawPath();ctx.stroke();ctx.strokeStyle=mapDefs[mapId].accent;ctx.lineWidth=4;drawPath();ctx.stroke();ctx.strokeStyle=mapDefs[mapId].accent+'55';ctx.lineWidth=1;ctx.setLineDash([4,9]);drawPath();ctx.stroke();ctx.setLineDash([]);
-    const core={x:1060,y:280};ctx.beginPath();ctx.arc(core.x,core.y,46+Math.sin(clock*3)*3,0,Math.PI*2);ctx.fillStyle='#15598744';ctx.fill();ctx.strokeStyle='#52ddff';ctx.lineWidth=2;ctx.stroke();ctx.beginPath();ctx.arc(core.x,core.y,26,0,Math.PI*2);ctx.fillStyle='#52ddff1e';ctx.fill();ctx.strokeStyle='#52ddffaa';ctx.stroke();ctx.fillStyle='#baf6ff';ctx.font='bold 20px system-ui';ctx.textAlign='center';ctx.fillText('✦',core.x,core.y+7);ctx.textAlign='left';
-  }
-  function drawPath(){ctx.beginPath();ctx.moveTo(path[0][0],path[0][1]);for(let i=1;i<path.length;i++)ctx.lineTo(path[i][0],path[i][1])}
-  function drawPads(){pads.forEach((p,i)=>{const used=towers.some(t=>t.pad===i);ctx.beginPath();ctx.arc(p.x,p.y,28,0,Math.PI*2);ctx.fillStyle=used?'#102f42':'#0b2434';ctx.fill();ctx.strokeStyle=used?'#52ddff99':'#6bb6cb77';ctx.lineWidth=2;ctx.setLineDash(used?[]:[4,4]);ctx.stroke();ctx.setLineDash([]);if(!used){ctx.fillStyle='#8dbaca';ctx.font='20px system-ui';ctx.textAlign='center';ctx.fillText('+',p.x,p.y+7);ctx.textAlign='left'}})}
-  function drawTowers(){towers.forEach(t=>{const lv=t.level||1,boost=1+Math.min(10,lv-1)*.08;ctx.beginPath();ctx.arc(t.x,t.y,34+Math.min(5,lv-1),0,Math.PI*2);ctx.strokeStyle=t===selectedTower?'#ffffffcc':t.color+'44';ctx.lineWidth=t===selectedTower?3:2;ctx.stroke();ctx.beginPath();ctx.arc(t.x,t.y,19+Math.min(4,lv-1)*.6,0,Math.PI*2);ctx.fillStyle='#0c2030';ctx.fill();ctx.strokeStyle=t.color;ctx.lineWidth=3+Math.min(2,lv-1)*.25;ctx.stroke();ctx.save();ctx.translate(t.x,t.y);ctx.rotate(t.angle||0);ctx.scale(boost,boost);ctx.fillStyle=t.color;if(t.type==='rail'){ctx.fillRect(0,-3.5,29+lv*1.8,7);ctx.fillRect(4,-9,12+lv,3);ctx.fillRect(4,6,12+lv,3);if(lv>=3){ctx.fillStyle='#f1d7ff';ctx.fillRect(8,-12,5,3)}}else if(t.type==='cannon'||t.type==='nova'){ctx.beginPath();ctx.arc(13+lv*.8,0,t.type==='nova'?10+lv*.5:8+lv*.45,0,Math.PI*2);ctx.fill();ctx.fillStyle='#fff3c4';ctx.beginPath();ctx.arc(13+lv*.8,0,3+lv*.25,0,Math.PI*2);ctx.fill();if(lv>=3){ctx.strokeStyle='#fff3c488';ctx.lineWidth=2;ctx.beginPath();ctx.arc(13+lv*.8,0,13+lv*.7,0,Math.PI*2);ctx.stroke()}}else if(t.type==='frost'){ctx.fillRect(0,-4,27+lv*1.5,8);ctx.fillRect(9,-9,4+lv*.25,18);if(lv>=3){ctx.fillStyle='#dff8ff';ctx.beginPath();ctx.moveTo(27+lv*1.5,0);ctx.lineTo(18,-7);ctx.lineTo(18,7);ctx.closePath();ctx.fill()}}else{roundedRect(0,-5,24+lv*1.5,10,5);ctx.fill();if(lv>=3){ctx.fillStyle='#baf6ff';ctx.fillRect(7,-8,5,3);ctx.fillRect(7,5,5,3)}}ctx.restore();ctx.beginPath();ctx.arc(t.x,t.y,5+Math.min(2,lv-1)*.4,0,Math.PI*2);ctx.fillStyle=t.color;ctx.fill();for(let i=1;i<Math.min(lv,5);i++){ctx.beginPath();ctx.arc(t.x-8+(i-1)*4,t.y-29,1.5,0,Math.PI*2);ctx.fillStyle='#ffcf6e';ctx.fill()}ctx.fillStyle='#dff8ff';ctx.font='bold 10px system-ui';ctx.textAlign='center';ctx.fillText('L'+t.level,t.x,t.y+48+Math.min(5,lv-1));ctx.textAlign='left'})}
-  function drawEnemies(){enemies.forEach(e=>{const p=pointAt(e.d);e.x=p.x;e.y=p.y;const boss=e.boss,size=boss?29:18;ctx.save();ctx.translate(e.x,e.y);ctx.rotate(Math.sin(clock*4+e.seed)*.08);ctx.fillStyle=e.slowedUntil>clock?'#52ddff3d':e.color+'36';ctx.beginPath();ctx.arc(0,0,size+5,0,Math.PI*2);ctx.fill();ctx.fillStyle=e.color;ctx.beginPath();if(boss){ctx.moveTo(-size,10);ctx.lineTo(-15,-size);ctx.lineTo(0,-size-10);ctx.lineTo(15,-size);ctx.lineTo(size,10);ctx.lineTo(0,size+12)}else{ctx.moveTo(-13,8);ctx.lineTo(0,-14);ctx.lineTo(13,8);ctx.lineTo(0,13)}ctx.closePath();ctx.fill();ctx.fillStyle='#fff1dc';ctx.beginPath();ctx.arc(0,-2,boss?7:4,0,Math.PI*2);ctx.fill();if(boss&&e.bossKind==='warden'&&e.shieldActive){ctx.strokeStyle='#fff2a8';ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,0,size+9,0,Math.PI*2);ctx.stroke()}ctx.restore();if(boss&&e.bossKind==='warden'&&e.shieldActive){ctx.save();ctx.translate(e.x-12,e.y-73);ctx.fillStyle='#fff2a8';ctx.shadowColor='#fff2a8';ctx.shadowBlur=12;ctx.fill(shieldPath);ctx.restore()}ctx.fillStyle='#301922';ctx.fillRect(e.x-(boss?28:15),e.y-(boss?43:25),boss?56:30,4);ctx.fillStyle=e.slowedUntil>clock?'#52ddff':e.color;ctx.fillRect(e.x-(boss?28:15),e.y-(boss?43:25),(boss?56:30)*Math.max(0,e.hp/e.max),4);ctx.fillStyle='#dcecf4';ctx.font='bold '+(boss?'10':'8')+'px ui-monospace,monospace';ctx.textAlign='center';ctx.fillText(e.name,e.x,e.y+(boss?48:29));ctx.textAlign='left'})}
-  function drawTargetIndicators(){const labels={front:'FRENTE',back:'ATRÁS',near:'PERTO',mostHp:'HP+',leastHp:'HP-'};towers.forEach(t=>{const hasTarget=t.target&&!t.target.dead;if(hasTarget){ctx.save();ctx.strokeStyle=t.color+'dd';ctx.lineWidth=2;ctx.setLineDash([5,5]);ctx.beginPath();ctx.moveTo(t.x,t.y);ctx.lineTo(t.target.x,t.target.y);ctx.stroke();ctx.setLineDash([]);ctx.strokeStyle='#ffffff';ctx.lineWidth=2.5;ctx.beginPath();ctx.arc(t.target.x,t.target.y,25+Math.sin(clock*7)*3,0,Math.PI*2);ctx.stroke();ctx.strokeStyle=t.color;ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(t.target.x-10,t.target.y);ctx.lineTo(t.target.x+10,t.target.y);ctx.moveTo(t.target.x,t.target.y-10);ctx.lineTo(t.target.x,t.target.y+10);ctx.stroke();ctx.restore()}if(t===selectedTower){const label='MIRA · '+(labels[t.targetMode||'front']||'FRENTE');ctx.save();ctx.font='bold 10px ui-monospace,monospace';const w=ctx.measureText(label).width+16;ctx.fillStyle='#071827ee';ctx.strokeStyle=t.color;ctx.lineWidth=1.5;ctx.beginPath();ctx.roundRect(t.x-w/2,t.y-59,w,21,7);ctx.fill();ctx.stroke();ctx.fillStyle='#e7f8ff';ctx.textAlign='center';ctx.fillText(label,t.x,t.y-45);ctx.textAlign='left';ctx.restore()}})}
-  function drawShots(){shots.forEach(s=>{const speed=Math.hypot(s.vx,s.vy),a=Math.atan2(s.vy,s.vx),boost=1+Math.min(10,(s.level||1)-1)*.1;ctx.save();ctx.translate(s.x,s.y);ctx.rotate(a);ctx.scale(boost,boost);ctx.shadowColor=s.color;ctx.shadowBlur=12+(s.level||1)*2;if(s.kind==='pulse'){ctx.strokeStyle='#baf6ff';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(-22,0);ctx.lineTo(16,0);ctx.stroke();ctx.strokeStyle=s.color;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-28,0);ctx.lineTo(22,0);ctx.stroke()}else if(s.kind==='cannon'){ctx.fillStyle=s.color;ctx.beginPath();ctx.moveTo(12,0);ctx.lineTo(-9,-7);ctx.lineTo(-13,0);ctx.lineTo(-9,7);ctx.closePath();ctx.fill();ctx.fillStyle='#fff3c4';ctx.beginPath();ctx.arc(4,0,3,0,Math.PI*2);ctx.fill()}else if(s.kind==='frost'){ctx.fillStyle='#dff8ff';ctx.beginPath();ctx.moveTo(12,0);ctx.lineTo(0,-7);ctx.lineTo(-11,0);ctx.lineTo(0,7);ctx.closePath();ctx.fill();ctx.strokeStyle=s.color;ctx.lineWidth=2;ctx.stroke()}else if(s.kind==='nova'){ctx.fillStyle=s.color;ctx.beginPath();ctx.arc(0,0,8+Math.sin(clock*12)*2,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#fff1dc';ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,0,12,0,Math.PI*2);ctx.stroke()}else{ctx.strokeStyle='#f1d7ff';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(-26,0);ctx.lineTo(18,0);ctx.stroke();ctx.strokeStyle=s.color;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-32,0);ctx.lineTo(22,0);ctx.stroke()}ctx.restore()});bursts.forEach(b=>{ctx.globalAlpha=Math.max(0,b.life);ctx.strokeStyle=b.color;ctx.lineWidth=2;ctx.beginPath();ctx.arc(b.x,b.y,b.radius*(1-b.life*.2),0,Math.PI*2);ctx.stroke();ctx.globalAlpha=1});particles.forEach(p=>{ctx.globalAlpha=Math.max(0,p.life);ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.size,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1})}
-  function render(){ctx.save();if(screenShake>0){ctx.translate((Math.random()-.5)*screenShake,(Math.random()-.5)*screenShake)}drawBackground();drawPads();drawTowers();drawEnemies();drawTargetIndicators();drawShots();if(gameOver){ctx.fillStyle='#020812bb';ctx.fillRect(0,0,W,H);ctx.fillStyle='#dff8ff';ctx.textAlign='center';ctx.font='bold 34px system-ui';ctx.fillText('NÚCLEO OFFLINE',W/2,H/2-8);ctx.font='14px system-ui';ctx.fillStyle='#8ba5b7';ctx.fillText('Clique em Reiniciar núcleo para tentar novamente',W/2,H/2+24);ctx.textAlign='left'}ctx.restore()}
-  function castMeteor(){if(gameOver||meteorCooldown>0)return;meteorCooldown=Math.max(8,18-(talents.core||0)*2);const targets=enemies.filter(e=>!e.dead).slice(0,5);targets.forEach((e,i)=>{setTimeout(()=>{if(e.dead)return;const damage=90+wave*14;e.hp-=damage;spark(e.x,e.y,'#ff7a3d',22,220);bursts.push({x:e.x,y:e.y,radius:48,life:1,color:'#ffcf6e'});tone('boom');if(e.hp<=0)killEnemy(e)},i*100)});notify('CHUVA DE METEOROS ativada');updateHud()}
-  function castGlobalFreeze(){if(gameOver||freezeCooldown>0)return;freezeCooldown=Math.max(10,24-(talents.core||0)*2);enemies.forEach(e=>{if(!e.dead)e.slowedUntil=Math.max(e.slowedUntil,clock+5)});bursts.push({x:W/2,y:H/2,radius:150,life:1,color:'#76e6ff'});spark(W/2,H/2,'#dff8ff',45,260);tone('shield');notify('CONGELAMENTO GLOBAL ativado');updateHud()}
-  function toggleWaveControl(){if(gameOver){startWave();return}if(spawning){paused=!paused;notify(paused?'Jogo pausado':'Onda retomada');updateHud();return}startWave()}
-  function startWave(){if(gameOver){reset();return}if(spawning)return;wave++;startAdaptiveMusic();updateAdaptiveMusic();tone(wave%5===0?'boss':'wave');const before=[...unlockedTowers];unlockAvailableTowers();if(unlockedTowers.length!==before.length)refreshTowerOptions();score+=Math.round(wave*100*difficultyDefs[difficultyId].score);runSubmitted=false;spawning=true;spawnLeft=6+Math.floor(wave*1.8)+(wave%5===0?1:0);spawnTotal=spawnLeft;spawnTimer=0;notify(wave%5===0?'BOSS INBOUND · onda '+wave+' · '+difficultyDefs[difficultyId].name:'Onda '+wave+' detectada · '+difficultyDefs[difficultyId].name);updateHud()}
-  function spawnEnemy(){const diff=difficultyDefs[difficultyId],isBoss=wave%5===0&&spawnLeft===spawnTotal,roll=Math.random(),heavy=wave>=3&&roll<Math.min(.25,.08+wave*.008),special=wave>=4&&!heavy?(roll<.2?'runner':roll<.38?'elemental':roll<.58?'null':roll<.78?'phase':'armored'):'scout',kind=heavy?'heavy':special,spec=enemyTypes[kind],bossKind=['warden','chrono','carrier'][Math.floor(wave/5-1)%3];if(isBoss){const bossSpec={warden:{name:'WARDEN',color:'#ffcf5c',resist:{pulse:.2,cannon:.55,rail:.25}},chrono:{name:'CHRONO',color:'#c893ff',resist:{pulse:.55,cannon:.15,rail:.15}},carrier:{name:'CARRIER',color:'#ff6e8b',resist:{pulse:.15,cannon:.25,rail:.35}}}[bossKind];const hp=(520+wave*85)*diff.hp;enemies.push({d:0,x:path[0][0],y:path[0][1],hp,max:hp,speed:(30+Math.min(20,wave))*diff.speed,seed:Math.random()*10,type:'boss',name:bossSpec.name,color:bossSpec.color,resist:bossSpec.resist,slowedUntil:0,boss:true,bossKind,shieldActive:true,skillTimer:3});spawnLeft--;return}const hp=((kind==='heavy'?110:kind==='scout'?55:kind==='runner'?48:78)+wave*15)*diff.hp,enSpeed=((kind==='heavy'?34:48)+Math.min(32,wave*1.7))*diff.speed;enemies.push({d:0,x:path[0][0],y:path[0][1],hp,max:hp,speed:enSpeed*(spec.speed||1),seed:Math.random()*10,type:kind,name:spec.name,color:spec.color,resist:spec.resist,slowedUntil:0});spawnLeft--}
-  function openInstallDialog(pad){if(towers.some(t=>t.pad===pad))return notify('Encaixe já ocupado');if(money<40)return notify('Créditos insuficientes');pendingPad=pad;refreshTowerOptions();$('installDialog').showModal()}
-  function placeTower(pad,typeId){const spec=towerTypes.find(s=>s.id===typeId);if(!spec||!towerUnlocked(spec.id))return notify('Torre bloqueada · avance nos mapas');if(towers.some(t=>t.pad===pad)||money<40)return;phaseStats.built++;const p=pads[pad],rail=spec.id==='rail',frost=spec.id==='frost',nova=spec.id==='nova';money-=40;const tower={pad,x:p.x,y:p.y,type:spec.id,typeName:spec.name,range:rail?145:nova?165:155,rate:rail?1.05:frost?.82:nova?.9:.7,cool:0,color:spec.color,target:null,targetMode:'front',angle:0,level:1,damage:rail?34:nova?26:frost?20:22,upgrades:{damage:0,speed:0,range:0}};towers.push(tower);spark(p.x,p.y,spec.color,10,70);bursts.push({x:p.x,y:p.y,radius:28,life:1,color:spec.color});tone('deploy');selectedTower=tower;pendingPad=null;notify(spec.name+' instalada · '+spec.ability);updateHud()}
-  function selectTower(t){selectedTower=t;$('upgrade').classList.add('show');refreshUpgrade()}
-  function refreshUpgrade(){const t=selectedTower;if(!t){$('upgrade').classList.remove('show');return}const bases={damage:35,speed:45,range:40},cost=k=>bases[k]*Math.pow(2,t.upgrades[k]),label=k=>t.upgrades[k]>=10?'MAX':cost(k)+'¢ · '+t.upgrades[k]+'/10';const resale=Math.floor((40+t.upgrades.damage*35+t.upgrades.speed*45+t.upgrades.range*40)*.7);$('upgradeTitle').textContent=t.typeName+' · torre '+String(t.pad+1).padStart(2,'0');$('upgradeLevel').textContent=t.level;$('upgradeStats').textContent='dano '+t.damage+' · alcance '+Math.round(t.range)+' · '+towerTypes.find(s=>s.id===t.type).ability;$('damageCost').textContent=label('damage');$('speedCost').textContent=label('speed');$('rangeCost').textContent=label('range');$('damageBtn').disabled=t.upgrades.damage>=10||money<cost('damage');$('speedBtn').disabled=t.upgrades.speed>=10||money<cost('speed');$('rangeBtn').disabled=t.upgrades.range>=10||money<cost('range');$('sellValue').textContent='+'+resale+'¢';document.querySelectorAll('[data-target-mode]').forEach(btn=>btn.classList.toggle('selected',btn.dataset.targetMode===(t.targetMode||'front')));const modeLabels={front:'Mais progresso no caminho',back:'Menos progresso no caminho',near:'Menor distância da torre',mostHp:'Maior vida atual',leastHp:'Menor vida atual'};$('targetModeHint').textContent=modeLabels[t.targetMode||'front']||modeLabels.front}
-  function buyUpgrade(kind){const t=selectedTower,bases={damage:35,speed:45,range:40};if(!t)return;const count=t.upgrades[kind],cost=bases[kind]*Math.pow(2,count);if(count>=10)return notify('Limite atingido · atributo maximizado');if(money<cost)return notify('Créditos insuficientes · custo '+cost+'¢');money-=cost;t.level++;t.upgrades[kind]++;if(kind==='damage')t.damage+=10;if(kind==='speed')t.rate=Math.max(.24,t.rate-.1);if(kind==='range')t.range+=28;notify('Upgrade aplicado · próximo custo '+(cost*2)+'¢');updateHud()}
-  function setTargetMode(mode){if(!selectedTower||!['front','back','near','mostHp','leastHp'].includes(mode))return;selectedTower.targetMode=mode;notify('Mira: '+({front:'mais à frente',back:'mais atrás',near:'mais próximo',mostHp:'mais vida',leastHp:'menos vida'})[mode]);refreshUpgrade();saveState()}
-  function sellTower(){if(!selectedTower)return;const t=selectedTower,resale=Math.floor((40+t.upgrades.damage*35+t.upgrades.speed*45+t.upgrades.range*40)*.7);towers=towers.filter(item=>item!==t);money+=resale;selectedTower=null;$('upgrade').classList.remove('show');notify('Torre vendida · +'+resale+' créditos');updateHud()}
-  function spark(x,y,color,count=8,power=90){const scale=quality==='low'?.55:quality==='ultra'?1.5:1;for(let i=0;i<Math.max(1,Math.round(count*scale));i++){const a=Math.random()*Math.PI*2,s=Math.random()*power;particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:.45+Math.random()*.45,size:Math.random()*3+1,color})}}
-  function muzzle(t){spark(t.x+24,t.y, t.color, 3, 35);bursts.push({x:t.x+24,y:t.y,radius:12,life:1,color:t.color});tone('shot')}
-  function impact(e,color){spark(e.x,e.y,color,7,115);bursts.push({x:e.x,y:e.y,radius:22,life:1,color:'#ffcf6e'});screenShake=Math.min(5,screenShake+1.2);tone('hit')}
-  function shieldBlockFeedback(e,color,kind){spark(e.x,e.y,'#fff2a8',kind==='cannon'?22:12,kind==='cannon'?170:105);bursts.push({x:e.x,y:e.y,radius:42,life:1,color:'#fff2a8'});bursts.push({x:e.x,y:e.y,radius:25,life:1,color:color||'#ffcf5c'});if(kind==='pulse'){bursts.push({x:e.x,y:e.y,radius:58,life:1,color:'#baf6ff'});spark(e.x,e.y,'#baf6ff',18,180)}else if(kind==='cannon'){bursts.push({x:e.x,y:e.y,radius:68,life:1,color:'#ff8a5c'});spark(e.x,e.y,'#ff8a5c',26,220)}else if(kind==='frost'){bursts.push({x:e.x,y:e.y,radius:52,life:1,color:'#76e6ff'});spark(e.x,e.y,'#dff8ff',18,130)}else if(kind==='nova'){bursts.push({x:e.x,y:e.y,radius:82,life:1,color:'#ff7a9f'});spark(e.x,e.y,'#ff7a9f',30,240)}else{bursts.push({x:e.x,y:e.y,radius:60,life:1,color:'#b984ff'});spark(e.x,e.y,'#b984ff',16,200)}if(clock-shieldSoundClock>.16){shieldSoundClock=clock;tone('shield')}}
-  function killEnemy(e){e.dead=true;kills++;phaseStats.defeated++;const reward=e.boss?500:25;score+=reward;if(e.boss)bossKills++;money+=10+(talents.economy||0)*3;spark(e.x,e.y,'#ffb84d',16,150);spark(e.x,e.y,'#ff5c68',8,90);bursts.push({x:e.x,y:e.y,radius:34,life:1,color:'#ffb84d'});screenShake=Math.min(8,screenShake+2.4);tone('boom');updateHud()}
-  function update(dt){if(paused||gameOver)return;clock+=dt;meteorCooldown=Math.max(0,meteorCooldown-dt);freezeCooldown=Math.max(0,freezeCooldown-dt);updateAdaptiveMusic();saveClock+=dt;if(saveClock>=2){saveClock=0;saveState()}if(spawning){spawnTimer-=dt;if(spawnLeft>0&&spawnTimer<=0){spawnEnemy();spawnTimer=.65}if(spawnLeft<=0&&enemies.length===0){spawning=false;completeWave();updateHud()}}
-    enemies.forEach(e=>{if(e.boss){e.skillTimer-=dt;if(e.bossKind==='warden'){if(e.skillTimer<=0){e.shieldActive=!e.shieldActive;e.skillTimer=3;notify(e.shieldActive?'WARDEN ativou escudo':'WARDEN escudo desativado')}}else if(e.bossKind==='carrier'&&e.skillTimer<=0){e.skillTimer=4;const spec=enemyTypes.scout;enemies.push({d:Math.max(0,e.d-8),x:e.x,y:e.y,hp:55+wave*8,max:55+wave*8,speed:58+wave,seed:Math.random()*10,type:'scout',name:spec.name,color:spec.color,resist:spec.resist,slowedUntil:0});spark(e.x,e.y,e.color,12,90);notify('CARRIER lançou um drone')}else if(e.bossKind==='chrono'&&e.skillTimer<=0){e.skillTimer=4;bursts.push({x:e.x,y:e.y,radius:70,life:1,color:e.color});notify('CHRONO distorceu o tempo')}}e.d+=e.speed*(e.slowedUntil>clock?.55:1)*dt;if(e.d>=routeLen){e.dead=true;lives-=e.boss?2:1;score=Math.max(0,score-(e.boss?250:40));notify(e.boss?'O BOSS alcançou o núcleo':'O invasor alcançou o núcleo');if(lives<=0){gameOver=true;submitScore();notify('Núcleo perdido')}updateHud()}});enemies=enemies.filter(e=>!e.dead);
-    const chrono= enemies.some(e=>e.boss&&e.bossKind==='chrono');towers.forEach(t=>{t.cool-=dt;let candidates=enemies.filter(e=>Math.hypot(e.x-t.x,e.y-t.y)<=t.range);const mode=t.targetMode||'front';candidates.sort(mode==='back'?(a,b)=>a.d-b.d:mode==='near'?(a,b)=>Math.hypot(a.x-t.x,a.y-t.y)-Math.hypot(b.x-t.x,b.y-t.y):mode==='mostHp'?(a,b)=>b.hp-a.hp:mode==='leastHp'?(a,b)=>a.hp-b.hp:(a,b)=>b.d-a.d);t.target=candidates[0]||null;const current=t.angle||0;if(!t.target){t.angle=(current+dt*.65)%(Math.PI*2)}else{const desired=Math.atan2(t.target.y-t.y,t.target.x-t.x);t.angle=current+Math.atan2(Math.sin(desired-current),Math.cos(desired-current))*Math.min(1,dt*9)}const desiredTarget=t.target?Math.atan2(t.target.y-t.y,t.target.x-t.x):t.angle||0;const alignment=Math.abs(Math.atan2(Math.sin(desiredTarget-(t.angle||0)),Math.cos(desiredTarget-(t.angle||0))));if(t.target&&alignment<.12&&t.cool<=0){const a=t.angle||0;shots.push({x:t.x+Math.cos(a)*20,y:t.y+Math.sin(a)*20,vx:Math.cos(a)*460,vy:Math.sin(a)*460,target:t.target,tower:t,kind:t.type,level:t.level||1,damage:(t.damage+wave*2)*(1+(talents.damage||0)*.08),color:t.color});muzzle(t);t.cool=t.rate*(chrono?1.4:1)/(1+(talents.speed||0)*.06)}});
-    shots.forEach(s=>{if(s.kind==='cannon'&&s.target&&!s.target.dead){const aim=Math.atan2(s.target.y-s.y,s.target.x-s.x),cur=Math.atan2(s.vy,s.vx),turn=Math.atan2(Math.sin(aim-cur),Math.cos(aim-cur))*Math.min(1,dt*5),next=cur+turn,velocity=Math.hypot(s.vx,s.vy);s.vx=Math.cos(next)*velocity;s.vy=Math.sin(next)*velocity}s.x+=s.vx*dt;s.y+=s.vy*dt;if(Math.random()<.65)particles.push({x:s.x,y:s.y,vx:0,vy:0,life:.16+(s.level||1)*.015,size:2+(s.level||1)*.18,color:s.color});if(s.target&&!s.target.dead&&Math.hypot(s.x-s.target.x,s.y-s.target.y)<13){const t=s.tower,shieldFactor=s.target.boss&&s.target.bossKind==='warden'&&s.target.shieldActive?.35:1,mainDamage=s.damage*(1-(s.target.resist[t.type]||0))*shieldFactor;phaseStats.damage+=mainDamage;if(shieldFactor<1)shieldBlockFeedback(s.target,s.color,s.kind);s.target.hp-=mainDamage;if(t.type==='pulse'||t.type==='frost')s.target.slowedUntil=clock+(t.type==='frost'?2.7:1.5)*(1-(s.target.resist[t.type]||0));if(t.type==='cannon'||t.type==='nova'){const radius=t.type==='nova'?92:62;enemies.forEach(e=>{if(!e.dead&&e!==s.target&&Math.hypot(e.x-s.target.x,e.y-s.target.y)<radius){const splashDamage=s.damage*(t.type==='nova'?.8:.65)*(1-(e.resist[t.type]||0));phaseStats.damage+=splashDamage;e.hp-=splashDamage;if(e.hp<=0)killEnemy(e)}});bursts.push({x:s.target.x,y:s.target.y,radius,life:1,color:t.color})}s.dead=true;impact(s.target,s.color);if(s.target.hp<=0)killEnemy(s.target)}});shots=shots.filter(s=>!s.dead&&s.x>-20&&s.x<W+20&&s.y>-20&&s.y<H+20);
-    particles.forEach(p=>{p.x+=p.vx*dt;p.y+=p.vy*dt;p.life-=dt;p.vx*=.96;p.vy*=.96});particles=particles.filter(p=>p.life>0);bursts.forEach(b=>{b.life-=dt*3;b.radius+=dt*40});bursts=bursts.filter(b=>b.life>0);screenShake=Math.max(0,screenShake-dt*18);
-  }
-  function loop(t){const dt=Math.min(.035,(t-last)/1000||0);last=t;update(dt);render();requestAnimationFrame(loop)}
-  canvas.addEventListener('click',e=>{const r=canvas.getBoundingClientRect(),x=(e.clientX-r.left)*W/r.width,y=(e.clientY-r.top)*H/r.height;const tower=towers.find(t=>Math.hypot(t.x-x,t.y-y)<28);if(tower){selectTower(tower);return}let hit=pads.findIndex(p=>Math.hypot(p.x-x,p.y-y)<34);if(hit>=0)openInstallDialog(hit)});
-  function drawSettingsPreview(){const c=$('settingsPreviewCanvas');if(!c)return;const p=c.getContext('2d'),d=quality==='low'?10:quality==='ultra'?34:22,t=performance.now()/1000;p.clearRect(0,0,c.width,c.height);p.fillStyle='#081827';p.fillRect(0,0,c.width,c.height);p.strokeStyle='#17384a66';p.lineWidth=1;for(let x=0;x<c.width;x+=35){p.beginPath();p.moveTo(x,0);p.lineTo(x,c.height);p.stroke()}p.beginPath();p.moveTo(-20,130);p.bezierCurveTo(120,20,220,170,350,72);p.bezierCurveTo(430,12,510,140,590,48);p.strokeStyle='#52ddff33';p.lineWidth=18;p.stroke();p.strokeStyle='#52ddff';p.lineWidth=2;p.stroke();for(let i=0;i<d;i++){const a=(i/d)*Math.PI*2+t*(.7+(i%3)*.12),r=22+(i%5)*8,x=280+Math.cos(a)*r,y=82+Math.sin(a)*r*.65; p.beginPath();p.arc(x,y,quality==='ultra'?3:2,0,Math.PI*2);p.fillStyle=i%3?'#52ddff':'#ffcf6e';p.globalAlpha=.45+.35*Math.sin(t*3+i);p.fill()}p.globalAlpha=1;p.fillStyle='#dff8ff';p.font='10px ui-monospace,monospace';p.fillText('LIVE FX // '+(quality==='low'?'ESSENTIAL':quality==='ultra'?'MAX PARTICLES':'BALANCED'),14,20)}
-  function syncSettings(){const pct=Math.round(volume*100);$('volumeRange').value=pct;$('volumeValue').textContent=pct+'%';$('qualityValue').textContent=quality==='low'?'BAIXA':quality==='ultra'?'ULTRA':'ALTA';document.querySelectorAll('[data-quality]').forEach(btn=>btn.classList.toggle('selected',btn.dataset.quality===quality));drawSettingsPreview()}
-  function showScreen(name){document.querySelectorAll('.screen').forEach(screen=>screen.classList.remove('active'));if(name==='game'){paused=false;$('gameShell').classList.add('ready');setWaveControl()}else{$('gameShell').classList.remove('ready');$(name+'Screen').classList.add('active');if(name==='settings'){syncSettings();$('testAudio').onclick=()=>{tone('shot');$('testAudio').classList.add('testing');setTimeout(()=>$('testAudio').classList.remove('testing'),260)};if(!previewTimer)previewTimer=setInterval(()=>{if($('settingsScreen').classList.contains('active'))drawSettingsPreview();else{clearInterval(previewTimer);previewTimer=null}},80)}}}
-  function drawMapPreview(){const preview=$('mapPreviewCanvas'),pctx=preview.getContext('2d'),def=mapDefs[selectedMapId],sx=preview.width/W,sy=preview.height/H;pctx.fillStyle='#071522';pctx.fillRect(0,0,preview.width,preview.height);pctx.strokeStyle='#17384a66';pctx.lineWidth=1;for(let x=0;x<preview.width;x+=28){pctx.beginPath();pctx.moveTo(x,0);pctx.lineTo(x,preview.height);pctx.stroke()}pctx.beginPath();pctx.moveTo(def.path[0][0]*sx,def.path[0][1]*sy);def.path.slice(1).forEach(pt=>pctx.lineTo(pt[0]*sx,pt[1]*sy));pctx.lineCap='round';pctx.lineJoin='round';pctx.strokeStyle=def.accent+'22';pctx.lineWidth=20;pctx.stroke();pctx.strokeStyle=def.accent;pctx.lineWidth=3;pctx.stroke();def.pads.forEach(pt=>{pctx.beginPath();pctx.arc(pt.x*sx,pt.y*sy,6,0,Math.PI*2);pctx.fillStyle='#0b2434';pctx.fill();pctx.strokeStyle=def.accent;pctx.stroke()});$('mapDetailTitle').textContent=def.name;$('mapDetailDescription').textContent=mapDescriptions[selectedMapId];document.querySelectorAll('.map-select').forEach(btn=>btn.classList.toggle('selected',btn.dataset.map===selectedMapId));document.querySelectorAll('.difficulty-select').forEach(btn=>btn.classList.toggle('selected',btn.dataset.difficulty===selectedDifficultyId))}
-  function selectMap(id){if(!mapDefs[id])return;if(!mapUnlocked(id))return notify('Fase bloqueada · complete as ondas exigidas');selectedMapId=id;drawMapPreview()}
-  function selectDifficulty(id){if(!difficultyDefs[id])return;selectedDifficultyId=id;drawMapPreview()}
-  function startSelectedMap(){if(!mapUnlocked(selectedMapId))return notify('Fase bloqueada · complete a campanha');mapId=selectedMapId;difficultyId=selectedDifficultyId;reset(false);path=mapDefs[mapId].path;pads=mapDefs[mapId].pads;routeLen=pathLength();$('mapDialog').close();showScreen('game');updateHud();notify('Operação iniciada · '+mapDefs[mapId].name+' · '+difficultyDefs[difficultyId].name)}
-  function showPhaseStats(){paused=true;$('phaseStatsSubtitle').textContent=mapDefs[mapId].name+' · desempenho até a onda '+wave;$('phaseBuilt').textContent=phaseStats.built;$('phaseDefeated').textContent=phaseStats.defeated;$('phaseDamage').textContent=Math.round(phaseStats.damage).toLocaleString('pt-BR');$('phaseStatsDialog').showModal();updateHud()}
-  function openMapDialog(){selectedMapId='citadel';selectedDifficultyId='standard';refreshCampaign();$('mapDetailTitle').textContent='CITADELA';$('mapDetailDescription').textContent=mapDescriptions.citadel;document.querySelectorAll('.map-select').forEach(btn=>btn.classList.toggle('selected',btn.dataset.map==='citadel'));document.querySelectorAll('.difficulty-select').forEach(btn=>btn.classList.toggle('selected',btn.dataset.difficulty==='standard'));$('mapDialog').showModal();drawMapPreview();requestAnimationFrame(drawMapPreview);setTimeout(drawMapPreview,80);setTimeout(drawMapPreview,240)}
-  document.querySelectorAll('[data-screen]').forEach(btn=>btn.onclick=()=>showScreen(btn.dataset.screen));document.querySelectorAll('[data-gallery-tower]').forEach(btn=>btn.onclick=()=>renderTowerDetail(btn.dataset.galleryTower));$('volumeRange').oninput=e=>{volume=Number(e.target.value)/100;syncSettings();saveState()};document.querySelectorAll('[data-quality]').forEach(btn=>btn.onclick=()=>{quality=btn.dataset.quality;syncSettings();saveState();notify('Qualidade gráfica: '+$('qualityValue').textContent)});$('waveBtn').onclick=toggleWaveControl;$('meteorBtn').onclick=castMeteor;$('freezeBtn').onclick=castGlobalFreeze;$('talentBtn').onclick=openTalents;$('closeTalents').onclick=()=>$('talentDialog').close();document.querySelectorAll('[data-buy-talent]').forEach(btn=>btn.onclick=()=>buyTalent(btn.dataset.buyTalent));$('closePhaseStats').onclick=()=>{$('phaseStatsDialog').close();paused=false;updateHud()};$('phaseHome').onclick=()=>{$('phaseStatsDialog').close();paused=true;showScreen('menu');notify('Retornando ao menu inicial')};$('phaseMaps').onclick=()=>{$('phaseStatsDialog').close();paused=true;showScreen('menu');openMapDialog()};$('backMenu').onclick=()=>{paused=true;showScreen('menu');notify('Simulação pausada · menu inicial')};$('reset').onclick=reset;$('mapBtn').onclick=openMapDialog;$('closeMap').onclick=()=>$('mapDialog').close();document.querySelectorAll('.map-select').forEach(btn=>btn.onclick=()=>selectMap(btn.dataset.map));document.querySelectorAll('.difficulty-select').forEach(btn=>btn.onclick=()=>selectDifficulty(btn.dataset.difficulty));$('startSelectedMap').onclick=startSelectedMap;$('achievementsBtn').onclick=()=>{renderAchievements();$('achievementDialog').showModal()};$('closeAchievements').onclick=()=>$('achievementDialog').close();$('leaderboardBtn').onclick=()=>{renderLeaderboard();$('leaderboardDialog').showModal()};$('closeLeaderboard').onclick=()=>$('leaderboardDialog').close();$('closeUpgrade').onclick=()=>{selectedTower=null;$('upgrade').classList.remove('show')};document.querySelectorAll('[data-target-mode]').forEach(btn=>btn.onclick=()=>setTargetMode(btn.dataset.targetMode));$('damageBtn').onclick=()=>buyUpgrade('damage');$('speedBtn').onclick=()=>buyUpgrade('speed');$('rangeBtn').onclick=()=>buyUpgrade('range');$('sellBtn').onclick=sellTower;$('cancelInstall').onclick=()=>{$('installDialog').close();pendingPad=null};document.querySelectorAll('[data-tower]').forEach(btn=>btn.onclick=()=>{if(pendingPad!==null){placeTower(pendingPad,btn.dataset.tower);$('installDialog').close()}});renderTowerDetail('pulse');syncSettings();drawMapPreview();
-  function reset(submit=true){if(submit)submitScore();money=120;lives=10;wave=0;kills=0;bossKills=0;score=0;phaseStats={built:0,defeated:0,damage:0};runSubmitted=false;paused=false;gameOver=false;spawning=false;spawnLeft=0;selectedTower=null;pendingPad=null;towers=[];enemies=[];shots=[];particles=[];bursts=[];screenShake=0;meteorCooldown=0;freezeCooldown=0;if($('installDialog').open)$('installDialog').close();if($('achievementDialog').open)$('achievementDialog').close();if($('leaderboardDialog').open)$('leaderboardDialog').close();if($('mapDialog').open)$('mapDialog').close();updateHud();notify('Setor reinicializado')}
-  window.addEventListener('beforeunload',saveState);try{loadState();refreshCampaign();refreshTowerOptions();updateHud()}catch(error){console.error('Falha ao restaurar progresso:',error);try{localStorage.removeItem(SAVE_KEY)}catch(e){}}requestAnimationFrame(loop);
-})();
-</script>
+
+  <header>
+    <h1>🎮 Meus Jogos</h1>
+    <p>Escolha um jogo para começar</p>
+  </header>
+
+  <main class="jogos">
+    <a href="tower-defense.html" class="card card-td">
+      <span class="icone">🏰</span>
+      <h2>Tower Defense</h2>
+      <p>Defenda sua base construindo torres estratégicas. Minimalista e desafiador.</p>
+      <span class="btn-jogar">Jogar →</span>
+    </a>
+
+    <a href="colorir.html" class="card card-colorir">
+      <span class="icone">🎨</span>
+      <h2>Colorir por Número</h2>
+      <p>Pinte desenhos seguindo os números. Diversão garantida para as crianças!</p>
+      <span class="btn-jogar">Jogar →</span>
+    </a>
+  </main>
+
+  <footer>
+    © 2026 — 🧑‍💻 Ricardo Coluce
+  </footer>
+
 </body>
 </html>
