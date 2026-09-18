@@ -127,7 +127,7 @@
 
   .games{
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
     gap: 12px;
   }
 
@@ -216,6 +216,10 @@
         </a>
         <a class="game-card" href="colorir.html">
           <span class="name">Colorir por Números</span>
+          <span class="run">jogar</span>
+        </a>
+        <a class="game-card" href="paper-plane.html">
+          <span class="name">Paper Plane</span>
           <span class="run">jogar</span>
         </a>
       </div>

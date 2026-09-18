@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <meta name="theme-color" content="#f5f3ee" />
+  <title>Paper Plane Flight</title>
+  <style>
+    :root{--paper:#f5f3ee;--navy:#294766;--coral:#ee7467;--grid:rgba(41,71,102,.075)}
+    *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--paper);color:var(--navy);font-family:"Courier New",monospace}body{touch-action:none}canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
+    #ui{position:fixed;inset:0;pointer-events:none;user-select:none}.header{position:absolute;top:26px;left:32px;right:32px;display:flex;align-items:center;gap:18px}.brand{font:700 12px/1 Arial,sans-serif;letter-spacing:.08em}.brand i{color:var(--coral);font-style:normal}.dot{display:inline-block;width:8px;height:8px;background:var(--coral);border-radius:2px;margin-right:9px}.score{margin-left:auto;display:flex;align-items:center;gap:12px;padding:8px 12px;border:1px solid rgba(41,71,102,.25);border-radius:4px;background:rgba(245,243,238,.85);font-size:8px;letter-spacing:.16em}.score strong{font:bold 25px/1 Arial,sans-serif;letter-spacing:-.06em}.score b{color:var(--coral);font-weight:500}.pause{pointer-events:auto;width:32px;height:32px;border:1px solid rgba(41,71,102,.3);border-radius:4px;background:rgba(245,243,238,.8);color:var(--navy);cursor:pointer}.status{position:absolute;top:64px;left:32px;color:var(--coral);font-size:8px;letter-spacing:.16em}.status:before{content:"";display:inline-block;width:6px;height:6px;margin:0 7px 1px 0;border-radius:1px;background:currentColor}.note{position:absolute;left:32px;bottom:24px;font-size:8px;letter-spacing:.12em;opacity:.5}.note em{color:var(--coral);font-style:normal}
+    .overlay{position:absolute;inset:0;display:grid;place-items:center;background:rgba(245,243,238,.18);transition:opacity .2s,visibility .2s}.overlay.hidden{opacity:0;visibility:hidden;pointer-events:none}.card{pointer-events:auto;width:min(350px,calc(100vw - 40px));padding:28px 30px;border:1px solid rgba(41,71,102,.3);border-radius:5px;background:rgba(245,243,238,.95);box-shadow:5px 5px 0 rgba(41,71,102,.08)}.eyebrow{display:block;margin-bottom:19px;font-size:8px;letter-spacing:.16em;opacity:.62}.card h1,.card h2{margin:0;font:700 clamp(38px,6vw,54px)/.9 Arial,sans-serif;letter-spacing:-.075em}.card h1 em{color:var(--coral);font-style:normal}.card p{margin:18px 0 22px;font:13px/1.45 Arial,sans-serif;color:rgba(41,71,102,.72)}button.start{border:0;border-radius:4px;background:var(--navy);color:var(--paper);padding:12px 14px;font:bold 12px Arial,sans-serif;cursor:pointer}button.start span{margin-left:20px;font-size:16px}.hint{margin-top:22px;font-size:8px;letter-spacing:.12em;opacity:.56}.hint i{color:var(--coral);font-style:normal;margin:0 8px}
+    @media(max-width:640px){.header{top:18px;left:18px;right:18px;gap:7px}.brand{font-size:9px}.score{padding:7px 9px;gap:7px}.score strong{font-size:22px}.pause{width:29px;height:29px}.status{left:18px;top:61px}.note{left:18px;bottom:14px;font-size:7px}}
+  </style>
+</head>
+<body>
+  <canvas id="game" aria-label="Paper Plane Flight"></canvas>
+  <div id="ui">
+    <div class="header"><div class="brand"><span class="dot"></span>PAPER PLANE <i>FLIGHT</i></div><div class="score"><span>SCORE</span><strong id="score">00</strong><span>BEST <b id="best">00</b></span></div><button class="pause" id="pause" aria-label="Pausar">Ⅱ</button></div>
+    <div class="status" id="status">READY TO FLY</div>
+    <div class="overlay" id="startOverlay"><div class="card"><span class="eyebrow">NOTEBOOK ARCADE · 01</span><h1>Paper Plane<br><em>Flight</em></h1><p>Tap to rise.<br>Drift through the gaps.</p><button class="start" id="start">Start flight <span>↗</span></button><div class="hint">CLICK <i>·</i> TAP <i>·</i> SPACE</div></div></div>
+    <div class="overlay hidden" id="overOverlay"><div class="card"><span class="eyebrow">FLIGHT LOG SAVED</span><h2>Nice glide.</h2><p>You threaded <b id="final">00</b> obstacle<span id="plural">s</span>.</p><button class="start" id="restart">Fly again <span>↗</span></button></div></div>
+    <div class="note">keep the fold steady <em>···</em> one obstacle at a time<span id="demoLabel"></span></div>
+  </div>
+  <script>
+  (()=>{
+    const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
+    const W=1000,H=600, demo=new URLSearchParams(location.search).has('demo');
+    let scale=1,ox=0,oy=0,last=0,state='ready',score=0,best=Number(localStorage.getItem('paper-plane-best')||0),time=0,seq=0,trail=[];
+    const player={x:240,y:300,vy:0,w:58,h:32}; let obstacles=[];
+    const gaps=[330,285,315,355,265,320,300,345,280,325];
+    const $=id=>document.getElementById(id);
+    $('best').textContent=String(best).padStart(2,'0');
+    if(demo)$('demoLabel').textContent=' · DEMO';
+    function resize(){canvas.width=innerWidth*devicePixelRatio;canvas.height=innerHeight*devicePixelRatio;scale=Math.min(innerWidth/W,innerHeight/H);ox=(innerWidth-W*scale)/2;oy=(innerHeight-H*scale)/2}
+    addEventListener('resize',resize);resize();
+    function worldPoint(x,y){return [ox+x*scale,oy+y*scale]}
+    function reset(){obstacles=[];seq=0;score=0;time=0;player.y=300;player.vy=0;trail=[];spawn(1040);spawn(1400);spawn(1760);updateHud()}
+    function spawn(x){const gap=gaps[seq++%gaps.length];obstacles.push({x,gap,passed:false,cloud:0.25+(seq%3)*.18})}
+    function start(){if(state==='gameover')reset();state='playing';flap();updateHud()}
+    function flap(){if(state==='ready')start();else if(state==='playing')player.vy=-365;else if(state==='gameover'){reset();start()}}
+    function togglePause(){if(state==='playing')state='paused';else if(state==='paused')state='playing';updateHud()}
+    function end(){state='gameover';obstacles=[];trail=[];best=Math.max(best,score);localStorage.setItem('paper-plane-best',best);updateHud()}
+    function updateHud(){ $('score').textContent=String(score).padStart(2,'0');$('best').textContent=String(best).padStart(2,'0');$('final').textContent=String(score).padStart(2,'0');$('plural').textContent=score===1?'':'s';$('status').textContent=state==='playing'?'IN THE AIR':state==='paused'?'PAUSED':state==='gameover'?'FLIGHT ENDED':'READY TO FLY';$('startOverlay').classList.toggle('hidden',state!=='ready');$('overOverlay').classList.toggle('hidden',state!=='gameover');$('pause').textContent=state==='paused'?'▶':'Ⅱ'}
+    function bounds(){return {l:player.x-20,r:player.x+22,t:player.y-11,b:player.y+11}}
+    function update(dt){if(state!=='playing')return;time+=dt;const upcoming=obstacles.find(o=>o.x>player.x-70);if(demo&&upcoming){const target=upcoming.gap;player.y+=(target-player.y)*Math.min(1,dt*3.2);player.vy=(target-player.y)*1.35}else{player.vy+=760*dt;player.y+=player.vy*dt}if(!demo){player.vy+=760*dt;player.y+=player.vy*dt}trail.push({x:player.x-24,y:player.y+2,a:1});if(trail.length>18)trail.shift();for(const o of obstacles){o.x-=270*dt;if(!o.passed&&o.x<player.x-35){o.passed=true;score++;best=Math.max(best,score);localStorage.setItem('paper-plane-best',best);updateHud()}const b=bounds(),hitX=b.r>o.x-36&&b.l<o.x+36,hitY=b.t<o.gap-75||b.b>o.gap+75;if(hitX&&hitY)return end()}obstacles=obstacles.filter(o=>o.x>-100);if(obstacles.length<4)spawn(obstacles.length?obstacles[obstacles.length-1].x+360:1040);if(player.y<18||player.y>582)end()}
+    function pencilLine(points,color='#294766',alpha=1,width=2){ctx.save();ctx.globalAlpha=alpha;ctx.strokeStyle=color;ctx.lineWidth=width;ctx.lineJoin='round';ctx.lineCap='round';ctx.beginPath();points.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.stroke();ctx.restore()}
+    function cloud(x,y,s=1){for(let pass=0;pass<2;pass++){const p=[];for(let i=0;i<=24;i++){const a=Math.PI*2*i/24;p.push([x+Math.cos(a)*62*s,y+Math.sin(a)*28*s+pass*2])}pencilLine(p,'#294766',.3,2)}}
+    function drawPlane(){const x=player.x,y=player.y,tilt=Math.max(-.45,Math.min(.35,player.vy*.001));ctx.save();ctx.translate(x,y);ctx.rotate(tilt);ctx.fillStyle='#f5f3ee';ctx.strokeStyle='#294766';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-29,-14);ctx.lineTo(30,0);ctx.lineTo(-22,15);ctx.lineTo(-9,3);ctx.closePath();ctx.fill();ctx.stroke();pencilLine([[-9,3],[30,0],[-4,-3]],'#294766',.95,2);ctx.fillStyle='#ee7467';ctx.beginPath();ctx.moveTo(-29,-14);ctx.lineTo(-9,3);ctx.lineTo(-18,1);ctx.closePath();ctx.fill();ctx.restore()}
+    function drawBackground(){ctx.fillStyle='#f5f3ee';ctx.fillRect(0,0,W,H);ctx.strokeStyle='rgba(41,71,102,.075)';ctx.lineWidth=1;for(let x=0;x<W;x+=72){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}for(let y=0;y<H;y+=72){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}ctx.strokeStyle='rgba(238,116,103,.25)';ctx.beginPath();ctx.moveTo(62,0);ctx.lineTo(62,H);ctx.stroke();cloud(84,86,.7);cloud(910,92,.62)}
+    function drawObstacle(o){const x=o.x,g=o.gap,top=g-75,bottom=g+75;ctx.fillStyle='#eeebe4';ctx.strokeStyle='#294766';ctx.lineWidth=2;ctx.fillRect(x-29,-20,58,top+20);ctx.strokeRect(x-29,-20,58,top+20);ctx.fillRect(x-29,bottom,58,H-bottom+20);ctx.strokeRect(x-29,bottom,58,H-bottom+20);ctx.fillStyle='#ee7467';ctx.fillRect(x-36,top-18,72,18);ctx.strokeRect(x-36,top-18,72,18);ctx.fillRect(x-36,bottom,72,18);ctx.strokeRect(x-36,bottom,72,18);cloud(x+95,g+8,o.cloud)}
+    function drawTrail(){trail.forEach((p,i)=>{const a=(i/trail.length)*.38;const wob=Math.sin(time*8+i)*2;pencilLine([[p.x,p.y+wob],[p.x-22-i*1.4,p.y-2+wob*.5]],'#536d84',a,1.5)})}
+    function render(){ctx.save();ctx.translate(ox,oy);ctx.scale(scale,scale);ctx.beginPath();ctx.rect(0,0,W,H);ctx.clip();drawBackground();obstacles.forEach(drawObstacle);drawTrail();drawPlane();ctx.restore()}
+    function loop(now){const dt=Math.min(.034,(now-last)/1000||0);last=now;update(dt);render();requestAnimationFrame(loop)}
+    canvas.addEventListener('pointerdown',flap);addEventListener('keydown',e=>{if(e.code==='Space'||e.code==='ArrowUp'){e.preventDefault();flap()}if(e.code==='KeyP')togglePause()});$('start').onclick=flap;$('restart').onclick=flap;$('pause').onclick=togglePause;reset();if(demo)start();requestAnimationFrame(loop)
+  })();
+  </script>
+</body>
+</html>
